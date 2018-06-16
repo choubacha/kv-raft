@@ -60,39 +60,46 @@ fn main() {
         tokio::run(server);
     });
 
-    for i in 0..10 {
-        let addr = "127.0.0.1:6142".parse().unwrap();
-        let client = TcpStream::connect(&addr)
-            .map_err(|e| println!("{:?}", e))
-            .map(move |sock| {
+    let addr = "127.0.0.1:6142".parse().unwrap();
+    let client = TcpStream::connect(&addr)
+        .map_err(|e| println!("{:?}", e))
+        .map(move |sock| {
 
-                let (stream, sink) = sock.split();
+            let (stream, sink) = sock.split();
 
-                let sink = FramedWrite::new(sink, Proto::<Request>::new());
-                let stream = FramedRead::new(stream, Proto::<Response>::new());
+            let sink = FramedWrite::new(sink, Proto::<Request>::new());
+            let stream = FramedRead::new(stream, Proto::<Response>::new());
 
-                let mut request = Request::new();
-                let mut get = request::Get::new();
-                get.set_key(format!("msg # {}", i));
-                request.set_get(get);
+            let num_requests = 10;
 
-                tokio::spawn(
-                    sink
-                        .send(request)
-                        .map_err(|e| println!("{:?}", e))
-                        .and_then(|_| {
-                            println!("waiting...");
-                            stream
-                                .into_future()
-                                .map_err(|e| println!("{:?}", e))
-                                .and_then(|(r, _)| {
-                                    println!("Response: {:?}", r);
-                                    Ok(())
-                                })
-                        })
-                );
-            });
+            // Send 10 requests
+            tokio::spawn(
+                futures::stream::iter_ok(0..num_requests)
+                    .map(|i| {
+                        let mut request = Request::new();
+                        let mut get = request::Get::new();
+                        get.set_key(format!("msg # {}", i));
+                        request.set_get(get);
+                        request
+                    })
+                    .forward(sink.sink_map_err(|_| ()))
+                    .and_then(|(_, mut sink)| {
+                        sink.close();
+                        Ok(())
+                    })
+            );
 
-        tokio::run(client);
-    }
+            // Take 10 responses
+            tokio::spawn(
+                stream
+                    .map_err(|e| println!("{:?}", e))
+                    .take(num_requests)
+                    .for_each(|r| {
+                        println!("Response: {:?}", r);
+                        Ok(())
+                    })
+            );
+        });
+
+    tokio::run(client);
 }
