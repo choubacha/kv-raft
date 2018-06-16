@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package public.request;
+
+message Get {
+  string key = 1;
+}
+
+message Set {
+  string key = 1;
+  string value = 2;
+}
+
+message Delete {
+  string key = 1;
+}
+
+message Scan {}

@@ -1,0 +1,18 @@
+[package]
+name = "kv-raft"
+version = "0.1.0"
+authors = ["Kevin Choubacha <chewbacha@gmail.com>"]
+
+[build-dependencies]
+protoc-rust = "~2.0"
+protoc = "~2.0"
+protobuf-codegen-pure = "*"
+
+[dependencies]
+tokio = "0.1.7"
+tokio-codec = "0.1"
+raft = "0.3.0"
+grpcio = "0.3.0"
+protobuf = { version = "~2.0", features = ["with-bytes"] }
+futures = "0.1.15"
+bytes = "*"

@@ -1,0 +1,10 @@
+[package]
+name = "example"
+version = "0.1.0"
+authors = ["Kevin Choubacha <chewbacha@gmail.com>"]
+
+[dependencies]
+kv-raft = { path = ".." }
+futures = "*"
+tokio = "0.1.7"
+tokio-codec = "*"

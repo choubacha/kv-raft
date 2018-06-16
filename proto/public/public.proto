@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package public;
+import "request.proto";
+import "response.proto";
+
+message Request {
+  oneof kind {
+    request.Get get = 1;
+    request.Set set = 2;
+    request.Delete delete = 3;
+    request.Scan scan = 4;
+  }
+}
+
+message Response {
+  oneof kind {
+    response.Get get = 1;
+    response.Set set = 2;
+    response.Delete delete = 3;
+    response.Scan scan = 4;
+  }
+}

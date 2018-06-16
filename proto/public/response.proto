@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package public.response;
+
+message Get {
+  string value = 1;
+  bool is_found = 2;
+}
+
+message Set {
+  bool is_success = 1;
+}
+
+message Delete {
+  string value = 1;
+  string is_found = 2;
+}
+
+message Scan {
+  repeated string keys = 1;
+}
