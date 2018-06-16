@@ -7,11 +7,11 @@ extern crate futures;
 extern crate tokio;
 extern crate tokio_codec;
 
+use std::sync::RwLock;
+use std::{thread, time::Duration};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
-use tokio_codec::{FramedRead, FramedWrite, Decoder};
-use std::{thread, time::Duration};
-use std::sync::RwLock;
+use tokio_codec::{Decoder, FramedRead, FramedWrite};
 
 fn main() {
     thread::spawn(|| {
@@ -30,28 +30,25 @@ fn main() {
 
                 let (tx, rx) = futures::sync::mpsc::channel(10);
 
-                let resp = rx
-                    .forward(sink.sink_map_err(|_| ()))
+                let resp = rx.forward(sink.sink_map_err(|_| ()))
                     .map_err(|e| println!("{:?}", e))
                     .map(|_| ());
 
                 tokio::spawn({
-                    stream
-                        .map_err(|e| println!("{:?}", e))
-                        .for_each(move |r| {
-                            println!("Request: {:?}", r);
+                    stream.map_err(|e| println!("{:?}", e)).for_each(move |r| {
+                        println!("Request: {:?}", r);
 
-                            let mut resp = Response::new();
-                            let mut get = response::Get::new();
-                            get.set_value(format!("Found ya: {}", r.get_get().get_key()));
-                            get.set_is_found(true);
+                        let mut resp = Response::new();
+                        let mut get = response::Get::new();
+                        get.set_value(format!("Found ya: {}", r.get_get().get_key()));
+                        get.set_is_found(true);
 
-                            resp.set_get(get);
+                        resp.set_get(get);
 
-                            tokio::spawn(tx.clone().send(resp).then(|_| Ok(())));
+                        tokio::spawn(tx.clone().send(resp).then(|_| Ok(())));
 
-                            Ok(())
-                        })
+                        Ok(())
+                    })
                 });
                 tokio::spawn(resp);
 
@@ -64,7 +61,6 @@ fn main() {
     let client = TcpStream::connect(&addr)
         .map_err(|e| println!("{:?}", e))
         .map(move |sock| {
-
             let (stream, sink) = sock.split();
 
             let sink = FramedWrite::new(sink, Proto::<Request>::new());
@@ -86,7 +82,7 @@ fn main() {
                     .and_then(|(_, mut sink)| {
                         sink.close();
                         Ok(())
-                    })
+                    }),
             );
 
             // Take 10 responses
@@ -97,7 +93,7 @@ fn main() {
                     .for_each(|r| {
                         println!("Response: {:?}", r);
                         Ok(())
-                    })
+                    }),
             );
         });
 

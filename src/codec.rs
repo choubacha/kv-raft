@@ -1,11 +1,10 @@
+use bytes::{Buf, BufMut, Bytes, BytesMut, IntoBuf};
 use protobuf::{parse_from_bytes, Message, ProtobufError};
-use bytes::{Buf, Bytes, BytesMut, BufMut, IntoBuf};
-use tokio_codec::{Decoder, Encoder};
 use std::marker::PhantomData;
-use std::io::Read;
+use tokio_codec::{Decoder, Encoder};
 
 /// A frame is a tuple of an integer frame for the first sequence
-/// followed by a run of bytes that is the length of the first sequence
+/// followed by a run of bytes that is the length of the first sequence.
 #[derive(Debug)]
 pub struct Proto<T: Message> {
     len: Option<u32>,
@@ -14,7 +13,10 @@ pub struct Proto<T: Message> {
 
 impl<T: Message> Proto<T> {
     pub fn new() -> Self {
-        Proto { len: None, phantom: PhantomData }
+        Proto {
+            len: None,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -53,10 +55,9 @@ impl<T: Message> Decoder for Proto<T> {
             if src.len() >= frame_len {
                 let bytes = src.split_to(frame_len);
 
-                return match parse_from_bytes::<Self::Item>(&bytes[HEADER..]) {
-                    Ok(p) =>  Ok(Some(p)),
-                    Err(e) => Err(Error::InvalidByteSequence),
-                }
+                return parse_from_bytes::<Self::Item>(&bytes[HEADER..])
+                    .map(|p| Some(p))
+                    .map_err(Error::from);
             }
         }
 
@@ -78,8 +79,8 @@ impl<T: Message> Encoder for Proto<T> {
 
 #[cfg(test)]
 mod tests {
-    use public::{Request, request};
     use super::*;
+    use public::{request, Request};
 
     #[test]
     fn test_decoding() {
@@ -124,7 +125,7 @@ mod tests {
         expected.put_slice(&proto);
 
         let mut actual = BytesMut::new();
-        Proto::<Request>::new().encode(req, &mut actual);
+        Proto::<Request>::new().encode(req, &mut actual).unwrap();
         assert_eq!(actual, expected);
     }
 }
