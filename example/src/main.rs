@@ -1,5 +1,6 @@
 extern crate kv_raft;
 
+use kv_raft::client::Client;
 use kv_raft::codec::Proto;
 use kv_raft::public::*;
 
@@ -7,11 +8,11 @@ extern crate futures;
 extern crate tokio;
 extern crate tokio_codec;
 
-use std::sync::RwLock;
-use std::{thread, time::Duration};
-use tokio::net::{TcpListener, TcpStream};
+use futures::future::{loop_fn, Loop};
+use std::thread;
+use tokio::net::TcpListener;
 use tokio::prelude::*;
-use tokio_codec::{Decoder, FramedRead, FramedWrite};
+use tokio_codec::{FramedRead, FramedWrite};
 
 fn main() {
     thread::spawn(|| {
@@ -58,44 +59,22 @@ fn main() {
     });
 
     let addr = "127.0.0.1:6142".parse().unwrap();
-    let client = TcpStream::connect(&addr)
-        .map_err(|e| println!("{:?}", e))
-        .map(move |sock| {
-            let (stream, sink) = sock.split();
-
-            let sink = FramedWrite::new(sink, Proto::<Request>::new());
-            let stream = FramedRead::new(stream, Proto::<Response>::new());
-
-            let num_requests = 10;
-
-            // Send 10 requests
-            tokio::spawn(
-                futures::stream::iter_ok(0..num_requests)
-                    .map(|i| {
-                        let mut request = Request::new();
-                        let mut get = request::Get::new();
-                        get.set_key(format!("msg # {}", i));
-                        request.set_get(get);
-                        request
+    let client = Client::connect(&addr)
+        .map_err(|e| println!("err while connecting: {:?}", e))
+        .and_then(|client| {
+            loop_fn((client, 0), |(client, count)| {
+                client
+                    .get(&format!("get number {}", count))
+                    .map_err(|e| println!("err while getting: {:?}", e))
+                    .and_then(move |(client, resp)| {
+                        println!("resp: {:?}", resp);
+                        if count >= 10 {
+                            Ok(Loop::Break(()))
+                        } else {
+                            Ok(Loop::Continue((client, count + 1)))
+                        }
                     })
-                    .forward(sink.sink_map_err(|_| ()))
-                    .and_then(|(_, mut sink)| {
-                        sink.close();
-                        Ok(())
-                    }),
-            );
-
-            // Take 10 responses
-            tokio::spawn(
-                stream
-                    .map_err(|e| println!("{:?}", e))
-                    .take(num_requests)
-                    .for_each(|r| {
-                        println!("Response: {:?}", r);
-                        Ok(())
-                    }),
-            );
+            })
         });
-
     tokio::run(client);
 }
