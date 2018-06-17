@@ -20,8 +20,8 @@ impl Handle {
         self.handle.join().expect("Failed to join db server");
     }
 
-    pub fn channel(&self) -> Channel {
-        Channel(self.sender.clone())
+    pub fn channel(&self) -> Sender<Message> {
+        self.sender.clone()
     }
 }
 
@@ -31,9 +31,6 @@ struct Db {
     state: RwLock<HashMap<String, String>>,
     raft: RawNode<MemStorage>,
 }
-
-#[derive(Debug, Clone)]
-pub struct Channel(Sender<Message>);
 
 impl Db {
     fn new() -> Db {
@@ -52,9 +49,9 @@ impl Db {
     fn start(self) -> Handle {
         let (sender, receiver) = channel(1024);
         let handle = thread::spawn(move || {
-            const HEARTBEAT: Duration = Duration::from_millis(1000);
+            const HEARTBEAT: Duration = Duration::from_millis(100);
 
-            let timer = Interval::new(Instant::now(), HEARTBEAT)
+            let timer = Interval::new(Instant::now() + HEARTBEAT, HEARTBEAT)
                 .map(|_| Message::Timeout)
                 .map_err(|_| ())
                 .select(receiver.map_err(|e| println!("error: {:?}", e)))
@@ -94,10 +91,9 @@ mod tests {
         let channel = handle.channel();
         tokio::run({
             channel
-                .0
                 .clone()
                 .send(Message::Msg(public::get_request("hello")))
-                .then(move |_| channel.0.clone().send(Message::Stop))
+                .then(move |_| channel.clone().send(Message::Stop))
                 .then(|_| Ok(()))
         });
         handle.join();
