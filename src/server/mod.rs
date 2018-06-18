@@ -1,64 +1,36 @@
-use futures::sync::mpsc::Sender;
-use futures::Future;
-use public::{self, Request, Response};
-use raft::{self, raw_node::RawNode, storage::MemStorage, Config};
+use public::{Request, Response};
+use raft;
 use std::net::SocketAddr;
-use std::thread::{self, JoinHandle};
-use tokio;
+use std::thread::JoinHandle;
+use futures::prelude::*;
 
 mod db;
+mod public;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Message {
     Timeout,
-    Msg(Request),
+    Cmd(public::Command),
     Raft(raft::eraftpb::Message),
+    Ping,
     Stop,
 }
 
 pub struct Server {
-    client: ClientHandle,
-    peer: PeerHandle,
     db: db::Handle,
+    public: public::Handle,
 }
 
-struct ClientListener {}
-
-struct ClientHandle(JoinHandle<()>);
-
-impl ClientHandle {
-    fn join(self) {
-        self.0.join();
-    }
-}
-
-impl ClientListener {
-    fn new() -> ClientListener {
-        ClientListener {}
-    }
-}
-
-struct ConnectionHandle {
-    sender: Sender<Response>,
-}
-
-/// The peer listener is a tcp listener that listens for raft messages
-/// on the peer network and then forwards them to the db.
-struct PeerListener;
-
-struct Peer {
-    id: u64,
-    addr: SocketAddr,
-}
-
-struct PeerHandle(JoinHandle<()>);
-
-impl PeerHandle {
-    fn join(self) {
-        self.0.join();
-    }
-}
+const PUBLIC_PORT: u16 = 9000;
+const PEER_PORT: u16 = 9001;
 
 impl Server {
-    fn start() {}
+    pub fn start() -> Server {
+        let pub_addr = SocketAddr::new("0.0.0.0".parse().unwrap(), PUBLIC_PORT);
+
+        let db = db::Db::new().start();
+        let public = public::listen(db.channel(), &pub_addr);
+
+        Server { db, public }
+    }
 }

@@ -10,6 +10,7 @@ message Request {
     request.Set set = 2;
     request.Delete delete = 3;
     request.Scan scan = 4;
+    bool ping = 5;
   }
 }
 
@@ -19,5 +20,6 @@ message Response {
     response.Set set = 2;
     response.Delete delete = 3;
     response.Scan scan = 4;
+    bool pong = 5;
   }
 }

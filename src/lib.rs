@@ -9,4 +9,4 @@ extern crate tokio_codec;
 pub mod client;
 pub mod codec;
 pub mod public;
-mod server;
+pub mod server;

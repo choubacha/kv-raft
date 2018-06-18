@@ -33,6 +33,10 @@ impl Client {
         self.send(public::get_request(&key))
     }
 
+    pub fn ping(self) -> impl Future<Item = ClientResponse, Error = codec::Error> {
+        self.send(public::ping_request())
+    }
+
     pub fn set(
         self,
         key: &str,

@@ -33,6 +33,18 @@ pub fn scan_request() -> Request {
     request
 }
 
+pub fn ping_request() -> Request {
+    let mut request = Request::new();
+    request.set_ping(true);
+    request
+}
+
+pub fn ping_response() -> Response {
+    let mut response = Response::new();
+    response.set_pong(true);
+    response
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
