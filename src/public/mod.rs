@@ -10,6 +10,19 @@ pub fn get_request(key: &str) -> Request {
     request
 }
 
+pub fn get_response(value: Option<String>) -> Response {
+    let mut response = Response::new();
+    let mut get = response::Get::new();
+    if let Some(value) = value {
+        get.set_value(value.to_owned());
+        get.set_is_found(true);
+    } else {
+        get.set_is_found(false);
+    }
+    response.set_get(get);
+    response
+}
+
 pub fn set_request(key: &str, value: &str) -> Request {
     let mut request = Request::new();
     let mut set = request::Set::new();

@@ -2,16 +2,16 @@
 //! would be commands from a client.
 
 use super::Message;
-use std::net::SocketAddr;
-use futures::sync::mpsc;
-use futures::prelude::*;
-use std::thread::{self, JoinHandle};
-use tokio::net::TcpListener;
-use tokio_codec::{FramedRead, FramedWrite};
-use tokio::prelude::*;
-use public::{self, Request, Response};
 use codec::Proto;
+use futures::prelude::*;
+use futures::sync::mpsc;
+use public::{self, Request, Response};
+use std::net::SocketAddr;
+use std::thread::{self, JoinHandle};
 use tokio;
+use tokio::net::TcpListener;
+use tokio::prelude::*;
+use tokio_codec::{FramedRead, FramedWrite};
 
 type Tx = mpsc::Sender<Response>;
 type Rx = mpsc::Receiver<Response>;
@@ -44,7 +44,7 @@ pub fn listen(db_channel: mpsc::Sender<Message>, addr: &SocketAddr) -> Handle {
 
         let server = listener
             .incoming()
-            .map_err(|e| println!("{:?}", e))
+            .map_err(handle_err)
             .for_each(move |sock| {
                 println!("New connection opened!");
 
@@ -53,12 +53,10 @@ pub fn listen(db_channel: mpsc::Sender<Message>, addr: &SocketAddr) -> Handle {
 
                 let sink = FramedWrite::new(sink, Proto::<Response>::new());
                 tokio::spawn({
-                    rx
-                        .forward(sink.sink_map_err(handle_err))
+                    rx.forward(sink.sink_map_err(handle_err))
                         .map(|_| ())
                         .map_err(handle_err)
                 });
-
 
                 let stream = FramedRead::new(stream, Proto::<Request>::new());
                 tokio::spawn(
@@ -69,7 +67,7 @@ pub fn listen(db_channel: mpsc::Sender<Message>, addr: &SocketAddr) -> Handle {
                             Message::Cmd(Command::new(tx.clone(), request))
                         })
                         .forward(db_channel.clone().sink_map_err(handle_err))
-                        .then(|_| Ok(()))
+                        .then(|_| Ok(())),
                 );
 
                 Ok(())

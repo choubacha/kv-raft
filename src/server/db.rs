@@ -1,6 +1,7 @@
 use super::Message;
 use futures::sync::mpsc;
 use futures::Stream;
+use public;
 use raft::{raw_node::RawNode, storage::MemStorage, Config};
 use std::collections::HashMap;
 use std::sync::RwLock;
@@ -8,7 +9,6 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 use tokio;
 use tokio::timer::Interval;
-use public;
 
 type Tx = mpsc::Sender<Message>;
 type Rx = mpsc::Receiver<Message>;
@@ -70,9 +70,14 @@ impl Db {
 
                             if command.request().has_ping() {
                                 command.reply(public::ping_response());
+                            } else if command.request().has_get() {
+                                let value = {
+                                    let get = command.request().get_get();
+                                    let reader = self.state.read().unwrap();
+                                    reader.get(get.get_key()).map(String::to_owned)
+                                };
+                                command.reply(public::get_response(value));
                             }
-
-                            println!("state: {:?}", &self.state);
                         }
                         Message::Raft(_) => {}
                         Message::Ping => {
@@ -94,8 +99,8 @@ impl Db {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures::{Future, Sink};
     use server::public::Command;
-    use futures::{Sink, Future};
 
     #[test]
     fn test_start_and_stop() {
