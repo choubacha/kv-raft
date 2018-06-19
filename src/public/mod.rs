@@ -32,6 +32,14 @@ pub fn set_request(key: &str, value: &str) -> Request {
     request
 }
 
+pub fn set_response() -> Response {
+    let mut response = Response::new();
+    let mut set = response::Set::new();
+    set.set_is_success(true);
+    response.set_set(set);
+    response
+}
+
 pub fn delete_request(key: &str) -> Request {
     let mut request = Request::new();
     let mut delete = request::Delete::new();
@@ -40,10 +48,31 @@ pub fn delete_request(key: &str) -> Request {
     request
 }
 
+pub fn delete_response(value: Option<String>) -> Response {
+    let mut response = Response::new();
+    let mut delete = response::Delete::new();
+    if let Some(value) = value {
+        delete.set_value(value);
+        delete.set_is_found(true);
+    } else {
+        delete.set_is_found(false);
+    }
+    response.set_delete(delete);
+    response
+}
+
 pub fn scan_request() -> Request {
     let mut request = Request::new();
     request.set_scan(request::Scan::new());
     request
+}
+
+pub fn scan_response(v: Vec<String>) -> Response {
+    let mut response = Response::new();
+    let mut scan = response::Scan::new();
+    scan.set_keys(v.into_iter().map(|s| s.to_owned()).collect());
+    response.set_scan(scan);
+    response
 }
 
 pub fn ping_request() -> Request {

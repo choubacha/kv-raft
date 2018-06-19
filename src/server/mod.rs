@@ -1,11 +1,10 @@
-use futures::prelude::*;
-use public::{Request, Response};
 use raft;
 use std::net::SocketAddr;
-use std::thread::JoinHandle;
 
 mod db;
+mod network;
 mod peer;
+mod proto;
 mod public;
 
 #[derive(Debug)]
@@ -24,17 +23,44 @@ pub struct Server {
 }
 
 const PUBLIC_PORT: u16 = 9000;
-const PEER_PORT: u16 = 9001;
+
+pub struct Peer {
+    id: u64,
+    addr: SocketAddr,
+}
+
+impl Peer {
+    pub fn new(id: u64, addr: SocketAddr) -> Peer {
+        Peer { id, addr }
+    }
+}
 
 impl Server {
-    pub fn start() -> Server {
+    /// Starts a server and returns a handle to it.
+    ///
+    /// A server must know it's peers before it can start. Once started, this
+    /// data is ignored and managed via the network. An improvement would be
+    /// to all peers to be added and pass their context down with the raft
+    /// message.
+    pub fn start(id: u64, peer_addr: &SocketAddr, peers: &[Peer]) -> Server {
         let pub_addr = SocketAddr::new("0.0.0.0".parse().unwrap(), PUBLIC_PORT);
-        let peer_addr = SocketAddr::new("0.0.0.0".parse().unwrap(), PEER_PORT);
 
-        let db = db::Db::new().start();
+        let mut network = network::start();
+        ::tokio::run(network.add(id, &peer_addr));
+        for peer in peers {
+            ::tokio::run(network.add(peer.id, &peer.addr));
+        }
+
+        let db = db::Db::new(id, network).start();
         let public = public::listen(db.channel(), &pub_addr);
         let peer = peer::listen(db.channel(), &peer_addr);
 
         Server { db, public, peer }
+    }
+
+    pub fn join(self) {
+        self.db.join();
+        self.public.join();
+        self.peer.join();
     }
 }

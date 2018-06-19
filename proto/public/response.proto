@@ -13,7 +13,7 @@ message Set {
 
 message Delete {
   string value = 1;
-  string is_found = 2;
+  bool is_found = 2;
 }
 
 message Scan {

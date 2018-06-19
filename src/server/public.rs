@@ -5,7 +5,7 @@ use super::Message;
 use codec::Proto;
 use futures::prelude::*;
 use futures::sync::mpsc;
-use public::{self, Request, Response};
+use public::{Request, Response};
 use std::net::SocketAddr;
 use std::thread::{self, JoinHandle};
 use tokio;
@@ -13,17 +13,14 @@ use tokio::net::TcpListener;
 use tokio::prelude::*;
 use tokio_codec::{FramedRead, FramedWrite};
 
-type Tx = mpsc::Sender<Response>;
-type Rx = mpsc::Receiver<Response>;
-
 #[derive(Debug)]
 pub struct Command {
     request: Request,
-    tx: Tx,
+    tx: mpsc::Sender<Response>,
 }
 
 impl Command {
-    fn new(tx: Tx, request: Request) -> Command {
+    pub fn new(tx: mpsc::Sender<Response>, request: Request) -> Command {
         Command { tx, request }
     }
 
@@ -88,7 +85,7 @@ pub struct Handle {
 }
 
 impl Handle {
-    fn join(self) {
+    pub fn join(self) {
         self.handle.join().expect("Client listener panicked");
     }
 }

@@ -1,6 +1,6 @@
 extern crate bytes;
+extern crate clap;
 extern crate futures;
-extern crate grpcio;
 extern crate protobuf;
 extern crate raft;
 extern crate tokio;

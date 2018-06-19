@@ -379,7 +379,7 @@ impl ::protobuf::reflect::ProtobufValue for Set {
 pub struct Delete {
     // message fields
     pub value: ::std::string::String,
-    pub is_found: ::std::string::String,
+    pub is_found: bool,
     // special fields
     unknown_fields: ::protobuf::UnknownFields,
     cached_size: ::protobuf::CachedSize,
@@ -416,30 +416,19 @@ impl Delete {
         &self.value
     }
 
-    // string is_found = 2;
+    // bool is_found = 2;
 
     pub fn clear_is_found(&mut self) {
-        self.is_found.clear();
+        self.is_found = false;
     }
 
     // Param is passed by value, moved
-    pub fn set_is_found(&mut self, v: ::std::string::String) {
+    pub fn set_is_found(&mut self, v: bool) {
         self.is_found = v;
     }
 
-    // Mutable pointer to the field.
-    // If field is not initialized, it is initialized with default value first.
-    pub fn mut_is_found(&mut self) -> &mut ::std::string::String {
-        &mut self.is_found
-    }
-
-    // Take field
-    pub fn take_is_found(&mut self) -> ::std::string::String {
-        ::std::mem::replace(&mut self.is_found, ::std::string::String::new())
-    }
-
-    pub fn get_is_found(&self) -> &str {
-        &self.is_found
+    pub fn get_is_found(&self) -> bool {
+        self.is_found
     }
 }
 
@@ -456,7 +445,11 @@ impl ::protobuf::Message for Delete {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.value)?;
                 },
                 2 => {
-                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.is_found)?;
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_bool()?;
+                    self.is_found = tmp;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -473,8 +466,8 @@ impl ::protobuf::Message for Delete {
         if !self.value.is_empty() {
             my_size += ::protobuf::rt::string_size(1, &self.value);
         }
-        if !self.is_found.is_empty() {
-            my_size += ::protobuf::rt::string_size(2, &self.is_found);
+        if self.is_found != false {
+            my_size += 2;
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
@@ -485,8 +478,8 @@ impl ::protobuf::Message for Delete {
         if !self.value.is_empty() {
             os.write_string(1, &self.value)?;
         }
-        if !self.is_found.is_empty() {
-            os.write_string(2, &self.is_found)?;
+        if self.is_found != false {
+            os.write_bool(2, self.is_found)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -535,7 +528,7 @@ impl ::protobuf::Message for Delete {
                     |m: &Delete| { &m.value },
                     |m: &mut Delete| { &mut m.value },
                 ));
-                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBool>(
                     "is_found",
                     |m: &Delete| { &m.is_found },
                     |m: &mut Delete| { &mut m.is_found },
@@ -747,8 +740,8 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     ue\x18\x01\x20\x01(\tR\x05value\x12\x19\n\x08is_found\x18\x02\x20\x01(\
     \x08R\x07isFound\"$\n\x03Set\x12\x1d\n\nis_success\x18\x01\x20\x01(\x08R\
     \tisSuccess\"9\n\x06Delete\x12\x14\n\x05value\x18\x01\x20\x01(\tR\x05val\
-    ue\x12\x19\n\x08is_found\x18\x02\x20\x01(\tR\x07isFound\"\x1a\n\x04Scan\
-    \x12\x12\n\x04keys\x18\x01\x20\x03(\tR\x04keysb\x06proto3\
+    ue\x12\x19\n\x08is_found\x18\x02\x20\x01(\x08R\x07isFound\"\x1a\n\x04Sca\
+    n\x12\x12\n\x04keys\x18\x01\x20\x03(\tR\x04keysb\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

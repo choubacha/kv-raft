@@ -58,7 +58,7 @@ pub struct Handle {
 }
 
 impl Handle {
-    fn join(self) {
+    pub fn join(self) {
         self.handle.join().expect("Client listener panicked");
     }
 }

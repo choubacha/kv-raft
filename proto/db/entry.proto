@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package db;
+
+message Entry {
+  uint64 id = 1;
+  string key = 2;
+  string value = 3;
+  Kind kind = 4;
+}
+
+enum Kind {
+  SET = 0;
+  DELETE = 1;
+}

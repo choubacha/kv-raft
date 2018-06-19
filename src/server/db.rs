@@ -1,21 +1,19 @@
-use super::Message;
+use super::{network, proto, public::Command, Message};
 use futures::sync::mpsc;
 use futures::Stream;
+use protobuf::parse_from_bytes;
 use public;
-use raft::{raw_node::RawNode, storage::MemStorage, Config};
+use raft::{self, eraftpb::EntryType, raw_node::RawNode, storage::MemStorage, Config};
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::num::Wrapping;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 use tokio;
 use tokio::timer::Interval;
 
-type Tx = mpsc::Sender<Message>;
-type Rx = mpsc::Receiver<Message>;
-
 pub struct Handle {
     handle: JoinHandle<()>,
-    tx: Tx,
+    tx: mpsc::Sender<Message>,
 }
 
 impl Handle {
@@ -23,38 +21,134 @@ impl Handle {
         self.handle.join().expect("Failed to join db server");
     }
 
-    pub fn channel(&self) -> Tx {
+    pub fn channel(&self) -> mpsc::Sender<Message> {
         self.tx.clone()
+    }
+}
+
+struct Callbacks {
+    commands: HashMap<Wrapping<u64>, Command>,
+    curr_id: Wrapping<u64>,
+}
+
+impl Callbacks {
+    fn new() -> Callbacks {
+        Callbacks {
+            commands: HashMap::new(),
+            curr_id: Wrapping(0),
+        }
+    }
+
+    fn store_delete(&mut self, command: Command) -> proto::Entry {
+        self.curr_id += Wrapping(1);
+
+        let key = {
+            let delete = command.request().get_delete();
+            delete.get_key().to_string()
+        };
+
+        self.commands.insert(self.curr_id, command);
+
+        let mut entry = proto::Entry::new();
+        entry.set_id(self.curr_id.0);
+        entry.set_key(key);
+        entry.set_kind(proto::EntryKind::DELETE);
+        entry
+    }
+
+    fn store_set(&mut self, command: Command) -> proto::Entry {
+        self.curr_id += Wrapping(1);
+
+        let (key, value) = {
+            let set = command.request().get_set();
+            (set.get_key().to_string(), set.get_value().to_string())
+        };
+
+        self.commands.insert(self.curr_id, command);
+
+        let mut entry = proto::Entry::new();
+        entry.set_id(self.curr_id.0);
+        entry.set_key(key);
+        entry.set_value(value);
+        entry.set_kind(proto::EntryKind::SET);
+        entry
+    }
+
+    fn get(&mut self, id: u64) -> Option<Command> {
+        self.commands.remove(&Wrapping(id))
+    }
+}
+
+#[cfg(test)]
+mod callback_tests {
+    use super::*;
+
+    #[test]
+    fn test_set_command() {
+        let (tx, _) = mpsc::channel(1024);
+        let cmd = Command::new(tx, public::set_request("hello", "world"));
+        let mut cbs = Callbacks::new();
+        let entry = cbs.store_set(cmd);
+        assert_eq!(entry.id, 1);
+        let cmd = cbs.get(entry.id).unwrap();
+
+        let entry = cbs.store_set(cmd);
+        assert_eq!(entry.id, 2);
+    }
+
+    #[test]
+    fn test_delete_command() {
+        let (tx, _) = mpsc::channel(1024);
+        let cmd = Command::new(tx, public::delete_request("hello"));
+        let mut cbs = Callbacks::new();
+        let entry = cbs.store_delete(cmd);
+        assert_eq!(entry.id, 1);
+        let cmd = cbs.get(entry.id).unwrap();
+
+        let entry = cbs.store_delete(cmd);
+        assert_eq!(entry.id, 2);
     }
 }
 
 /// The database does not communicate on a network but instead uses
 /// a set of channels to communicate.
 pub struct Db {
-    state: RwLock<HashMap<String, String>>,
-    raft: RawNode<MemStorage>,
+    state: HashMap<String, String>,
+    node: RawNode<MemStorage>,
+    network: network::Handle,
+    callbacks: Callbacks,
 }
 
 impl Db {
-    pub fn new() -> Db {
-        let state = RwLock::new(HashMap::new());
+    pub fn new(id: u64, network: network::Handle) -> Db {
+        let state = HashMap::new();
         let config = Config {
-            id: 1,
-            heartbeat_tick: 3,
-            election_tick: 30,
+            id,
+            peers: Vec::from(network.peer_ids()),
+            heartbeat_tick: 1,
+            election_tick: 10,
             max_inflight_msgs: 1024,
             ..Config::default()
         };
-        let raft = RawNode::new(&config, MemStorage::default(), Vec::new()).unwrap();
-        Db { state, raft }
+        config.validate().unwrap();
+
+        let node = RawNode::new(&config, MemStorage::default(), Vec::new()).unwrap();
+        let callbacks = Callbacks::new();
+
+        Db {
+            state,
+            network,
+            node,
+            callbacks,
+        }
     }
 
-    pub fn start(self) -> Handle {
+    pub fn start(mut self) -> Handle {
         let (tx, rx) = mpsc::channel(1024);
         let handle = thread::spawn(move || {
             const HEARTBEAT: Duration = Duration::from_millis(100);
 
-            let timer = Interval::new(Instant::now() + HEARTBEAT, HEARTBEAT)
+            let timer = Interval::new(Instant::now(), HEARTBEAT)
                 .map(|_| Message::Timeout)
                 .map_err(|_| ())
                 .select(rx.map_err(|e| println!("error: {:?}", e)))
@@ -63,23 +157,13 @@ impl Db {
                     // worked on and possibly generate other return values.
                     match msg {
                         Message::Timeout => {
-                            println!("timed out");
+                            self.node.tick();
                         }
-                        Message::Cmd(command) => {
-                            println!("command: {:?}", command);
-
-                            if command.request().has_ping() {
-                                command.reply(public::ping_response());
-                            } else if command.request().has_get() {
-                                let value = {
-                                    let get = command.request().get_get();
-                                    let reader = self.state.read().unwrap();
-                                    reader.get(get.get_key()).map(String::to_owned)
-                                };
-                                command.reply(public::get_response(value));
-                            }
+                        Message::Cmd(command) => self.handle(command),
+                        Message::Raft(message) => {
+                            println!("Received raft message...");
+                            self.node.step(message).unwrap();
                         }
-                        Message::Raft(_) => {}
                         Message::Ping => {
                             println!("PING");
                         }
@@ -88,11 +172,159 @@ impl Db {
                             return Err(());
                         }
                     }
+
+                    self.check_ready();
                     Ok(())
                 });
             tokio::run(timer);
         });
         Handle { handle, tx }
+    }
+
+    fn handle(&mut self, command: Command) {
+        if command.request().has_ping() {
+            self.handle_ping(command);
+        } else if command.request().has_get() {
+            self.handle_get(command);
+        } else if command.request().has_scan() {
+            self.handle_scan(command);
+        } else if command.request().has_delete() {
+            self.handle_delete(command);
+        } else if command.request().has_set() {
+            self.handle_set(command);
+        }
+    }
+
+    fn handle_get(&self, command: Command) {
+        let value = {
+            let get = command.request().get_get();
+            self.state.get(get.get_key()).map(String::to_owned)
+        };
+        command.reply(public::get_response(value));
+    }
+
+    fn handle_scan(&self, command: Command) {
+        let keys = self.state.keys().map(|s| s.to_owned()).collect();
+        command.reply(public::scan_response(keys));
+    }
+
+    fn handle_set(&mut self, command: Command) {
+        use protobuf::Message;
+
+        let entry = self.callbacks.store_set(command);
+
+        self.node
+            .propose(Vec::new(), entry.write_to_bytes().unwrap())
+            .unwrap();
+    }
+
+    fn handle_delete(&mut self, command: Command) {
+        use protobuf::Message;
+
+        let entry = self.callbacks.store_delete(command);
+
+        self.node
+            .propose(Vec::new(), entry.write_to_bytes().unwrap())
+            .unwrap();
+    }
+
+    fn handle_ping(&self, command: Command) {
+        command.reply(public::ping_response());
+    }
+
+    fn check_ready(&mut self) {
+        if !self.node.has_ready() {
+            return;
+        }
+
+        println!("Raft is ready...");
+
+        // The Raft is ready, we can do something now.
+        let mut ready = self.node.ready();
+
+        // Leaders should send messages right away
+        if self.is_leader() {
+            let msgs = ready.messages.drain(..);
+            for msg in msgs {
+                ::tokio::spawn(self.network.send(msg.to, msg));
+            }
+        }
+
+        if !raft::is_empty_snap(&ready.snapshot) {
+            println!("Applying snap shot");
+            self.node
+                .mut_store()
+                .wl()
+                .apply_snapshot(ready.snapshot.clone())
+                .unwrap();
+        }
+
+        if !ready.entries.is_empty() {
+            println!("Saving entries...");
+            self.node.mut_store().wl().append(&ready.entries).unwrap();
+        }
+
+        if let Some(ref hs) = ready.hs {
+            println!("Save hardstate...");
+
+            // Raft HardState changed, and we need to persist it.
+            self.node.mut_store().wl().set_hardstate(hs.clone());
+        }
+
+        // Followers should reply messages
+        if !self.is_leader() {
+            let msgs = ready.messages.drain(..);
+            for msg in msgs {
+                ::tokio::spawn(self.network.send(msg.to, msg));
+            }
+        }
+
+        if let Some(committed_entries) = ready.committed_entries.take() {
+            let mut _last_apply_index = 0;
+            for entry in committed_entries {
+                println!("Updating state based on entry...");
+
+                // Mostly, you need to save the last apply index to resume applying
+                // after restart. Here we just ignore this because we use a Memory storage.
+                _last_apply_index = entry.get_index();
+
+                let data = entry.get_data();
+
+                if data.is_empty() {
+                    // Emtpy entry, when the peer becomes Leader it will send an empty entry.
+                    continue;
+                }
+
+                // Modify the state and reply
+                match entry.get_entry_type() {
+                    EntryType::EntryNormal => {
+                        let entry = parse_from_bytes::<proto::Entry>(data).expect("Valid protobuf");
+
+                        let response = match entry.kind {
+                            proto::EntryKind::SET => {
+                                self.state.insert(entry.key.clone(), entry.value.clone());
+                                public::set_response()
+                            }
+                            proto::EntryKind::DELETE => {
+                                public::delete_response(self.state.remove(&entry.key))
+                            }
+                        };
+
+                        if let Some(cmd) = self.callbacks.get(entry.id) {
+                            cmd.reply(response);
+                        }
+                    }
+                    EntryType::EntryConfChange => {
+                        println!("Some conf change");
+                    }
+                }
+            }
+        }
+        self.node.advance(ready);
+    }
+
+    fn is_leader(&self) -> bool {
+        self.node.raft.leader_id == self.node.raft.id
     }
 }
 
@@ -104,9 +336,12 @@ mod tests {
 
     #[test]
     fn test_start_and_stop() {
-        let db = Db::new();
+        let network = network::start();
+
+        let db = Db::new(1, network);
         let handle = db.start();
         let channel = handle.channel();
+
         tokio::run({
             channel
                 .clone()

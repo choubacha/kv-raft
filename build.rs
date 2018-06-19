@@ -17,4 +17,13 @@ fn main() {
             ..Default::default()
         },
     }).expect("protoc");
+
+    protoc_rust::run(protoc_rust::Args {
+        out_dir: "src/server/proto",
+        input: &["proto/db/entry.proto"],
+        includes: &["proto/db"],
+        customize: Customize {
+            ..Default::default()
+        },
+    }).expect("protoc");
 }

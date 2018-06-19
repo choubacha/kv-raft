@@ -1,0 +1,31 @@
+---
+version: "3"
+services:
+  server-1:
+    build: .
+    command: ./server --peer-on peer:9001 1 2-peer:9002 3-peer:9003
+    ports:
+      - "19001:9000"
+      - "9001"
+    networks:
+      - peer
+  server-2:
+    build: .
+    command: ./server --peer-on peer:9002 2 1-peer:9001 3-peer:9003
+    ports:
+      - "19002:9000"
+      - "9002"
+    networks:
+      - peer
+  server-3:
+    build: .
+    command: ./server --peer-on peer:9003 3 1-peer:9001 2-peer:9002
+    networks:
+      - peer
+    ports:
+      - "19003:9000"
+      - "9003"
+
+networks:
+  peer:
+    driver: bridge
