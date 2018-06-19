@@ -46,6 +46,9 @@ impl Server {
         let pub_addr = SocketAddr::new("0.0.0.0".parse().unwrap(), PUBLIC_PORT);
 
         let mut network = network::start();
+
+        // Starts up the network with peers. This helps to
+        // broadcast out to peers.
         ::tokio::run(network.add(id, &peer_addr));
         for peer in peers {
             ::tokio::run(network.add(peer.id, &peer.addr));

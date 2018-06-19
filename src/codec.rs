@@ -72,7 +72,7 @@ impl<T: Message> Encoder for Proto<T> {
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let data = item.write_to_bytes()?;
         dst.put_u32_be(data.len() as u32);
-        dst.put_slice(&data);
+        dst.extend_from_slice(&data);
         Ok(())
     }
 }

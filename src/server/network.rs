@@ -2,6 +2,7 @@ use codec::Proto;
 use futures::prelude::*;
 use futures::sync::mpsc;
 use raft;
+use raft::raw_node::Peer as RaftPeer;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::thread::{self, JoinHandle};
@@ -35,11 +36,17 @@ impl Handle {
             .clone()
             .send(Cmd::raft(id, msg))
             .map(|_| ())
-            .map_err(|e| println!("Error when sending message to network: {:?}", e))
+            .map_err(|e| println!("Error when queuing message to network: {:?}", e))
     }
 
-    pub fn peer_ids(&self) -> &[u64] {
-        &self.ids
+    pub fn peers(&self) -> Vec<RaftPeer> {
+        self.ids
+            .iter()
+            .map(|id| RaftPeer {
+                id: *id,
+                context: None,
+            })
+            .collect()
     }
 
     pub fn add(&mut self, id: u64, addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {
@@ -48,7 +55,7 @@ impl Handle {
             .clone()
             .send(Cmd::add(id, addr))
             .map(|_| ())
-            .map_err(|e| println!("Error when sending message to network: {:?}", e))
+            .map_err(|e| println!("Error when queuing node add: {:?}", e))
     }
 }
 
@@ -116,21 +123,26 @@ impl Network {
         let (tx, rx) = mpsc::channel(1024);
         self.peers.insert(id, Peer { tx, id });
 
-        tokio::spawn(rx.for_each(move |msg| {
-            let addr = addr.clone();
+        tokio::spawn({
+            rx.for_each(move |msg| {
+                let addr = addr.clone();
 
-            // TODO: Find a way to reuse the connection
-            TcpStream::connect(&addr)
-                .map_err(|e| println!("Error connecting to peer: {:?}", e))
-                .and_then(move |sock| {
-                    let (_, sink) = sock.split();
+                tokio::spawn(
+                    TcpStream::connect(&addr)
+                        .map_err(|e| println!("Error connecting to peer: {:?}", e))
+                        .and_then(move |sock| {
+                            let (_, sink) = sock.split();
 
-                    let sink = FramedWrite::new(sink, Proto::<raft::eraftpb::Message>::new());
-                    sink.send(msg)
-                        .map(|_| ())
-                        .map_err(|e| println!("Error sending message to peer: {:?}", e))
-                })
-        }));
+                            let sink =
+                                FramedWrite::new(sink, Proto::<raft::eraftpb::Message>::new());
+                            sink.send(msg)
+                                .map(|_| ())
+                                .map_err(|e| println!("Error sending message to peer: {:?}", e))
+                        }),
+                );
+                Ok(())
+            })
+        });
     }
 
     fn send(&self, id: u64, msg: raft::eraftpb::Message) {
@@ -140,7 +152,7 @@ impl Network {
                     .clone()
                     .send(msg)
                     .map(|_| ())
-                    .map_err(|e| println!("Error when sending message to network: {:?}", e))
+                    .map_err(|e| println!("Error when sending message over peer channel: {:?}", e))
             });
         }
     }

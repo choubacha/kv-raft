@@ -45,6 +45,14 @@ impl Client {
         self.send(public::set_request(&key, &value))
     }
 
+    pub fn scan(self) -> impl Future<Item = ClientResponse, Error = codec::Error> {
+        self.send(public::scan_request())
+    }
+
+    pub fn delete(self, key: &str) -> impl Future<Item = ClientResponse, Error = codec::Error> {
+        self.send(public::delete_request(&key))
+    }
+
     fn send(self, request: Request) -> impl Future<Item = ClientResponse, Error = codec::Error> {
         let sink = self.sink;
         let stream = self.stream;

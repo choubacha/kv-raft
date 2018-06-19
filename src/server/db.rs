@@ -124,15 +124,15 @@ impl Db {
         let state = HashMap::new();
         let config = Config {
             id,
-            peers: Vec::from(network.peer_ids()),
             heartbeat_tick: 1,
             election_tick: 10,
             max_inflight_msgs: 1024,
+            pre_vote: true,
             ..Config::default()
         };
         config.validate().unwrap();
 
-        let node = RawNode::new(&config, MemStorage::default(), Vec::new()).unwrap();
+        let node = RawNode::new(&config, MemStorage::default(), network.peers()).unwrap();
         let callbacks = Callbacks::new();
 
         Db {
@@ -146,7 +146,7 @@ impl Db {
     pub fn start(mut self) -> Handle {
         let (tx, rx) = mpsc::channel(1024);
         let handle = thread::spawn(move || {
-            const HEARTBEAT: Duration = Duration::from_millis(100);
+            const HEARTBEAT: Duration = Duration::from_millis(500);
 
             let timer = Interval::new(Instant::now(), HEARTBEAT)
                 .map(|_| Message::Timeout)
@@ -174,6 +174,7 @@ impl Db {
                     }
 
                     self.check_ready();
+
                     Ok(())
                 });
             tokio::run(timer);
@@ -242,8 +243,10 @@ impl Db {
         // The Raft is ready, we can do something now.
         let mut ready = self.node.ready();
 
+        let is_leader = self.is_leader();
+
         // Leaders should send messages right away
-        if self.is_leader() {
+        if is_leader {
             let msgs = ready.messages.drain(..);
             for msg in msgs {
                 ::tokio::spawn(self.network.send(msg.to, msg));
@@ -272,7 +275,7 @@ impl Db {
         }
 
         // Followers should reply messages
-        if !self.is_leader() {
+        if !is_leader {
             let msgs = ready.messages.drain(..);
             for msg in msgs {
                 ::tokio::spawn(self.network.send(msg.to, msg));
