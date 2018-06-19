@@ -11,15 +11,17 @@ message Request {
     request.Delete delete = 3;
     request.Scan scan = 4;
     bool ping = 5;
+    request.AddNode add_node = 6;
+    request.RemoveNode remove_node = 7;
   }
 }
 
 message Response {
   oneof kind {
     response.Get get = 1;
-    response.Set set = 2;
     response.Delete delete = 3;
     response.Scan scan = 4;
     bool pong = 5;
+    bool success = 6;
   }
 }

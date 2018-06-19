@@ -20,6 +20,19 @@ fn main() {
                 .arg(Arg::with_name("KEY").takes_value(true))
                 .arg(Arg::with_name("VALUE").takes_value(true)),
         )
+        .subcommand(
+            SubCommand::with_name("add_node")
+                .arg(Arg::with_name("ID").takes_value(true))
+                .arg(Arg::with_name("ADDR").takes_value(true))
+                .arg(
+                    Arg::with_name("learner")
+                        .long("learner")
+                        .help("Add as a learner node"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("remove_node").arg(Arg::with_name("ID").takes_value(true)),
+        )
         .subcommand(SubCommand::with_name("scan"))
         .subcommand(SubCommand::with_name("ping"))
         .subcommand(SubCommand::with_name("bench"))
@@ -47,7 +60,8 @@ fn main() {
                                 if resp.get_get().get_is_found() {
                                     println!("{}", resp.get_get().get_value());
                                 } else {
-                                    panic!("Key not found")
+                                    println!("Key not found");
+                                    ::std::process::exit(1);
                                 }
                                 Ok(())
                             }),
@@ -62,8 +76,43 @@ fn main() {
                             .map_err(|e| println!("err while setting: {:?}", e))
                             .and_then(move |(_, resp)| {
                                 let resp = resp.expect("Response missing");
-                                if !resp.get_set().get_is_success() {
-                                    panic!("Value not set");
+                                if !resp.get_success() {
+                                    println!("Value not set");
+                                    ::std::process::exit(1);
+                                }
+                                Ok(())
+                            }),
+                    );
+                }
+                ("add_node", Some(sub)) => {
+                    let id = sub.value_of("ID").unwrap().parse().unwrap();
+                    let addr = sub.value_of("ADDR").unwrap();
+                    let is_learner = sub.is_present("learner");
+                    ::tokio::spawn(
+                        client
+                            .add_node(id, addr.to_string(), is_learner)
+                            .map_err(|e| println!("err while setting: {:?}", e))
+                            .and_then(move |(_, resp)| {
+                                let resp = resp.expect("Response missing");
+                                if !resp.get_success() {
+                                    println!("Node failed to add");
+                                    ::std::process::exit(1);
+                                }
+                                Ok(())
+                            }),
+                    );
+                }
+                ("remove_node", Some(sub)) => {
+                    let id = sub.value_of("ID").unwrap().parse().unwrap();
+                    ::tokio::spawn(
+                        client
+                            .remove_node(id)
+                            .map_err(|e| println!("err while setting: {:?}", e))
+                            .and_then(move |(_, resp)| {
+                                let resp = resp.expect("Response missing");
+                                if !resp.get_success() {
+                                    println!("Node failed to remove");
+                                    ::std::process::exit(1);
                                 }
                                 Ok(())
                             }),
@@ -81,7 +130,8 @@ fn main() {
                                 if resp.get_delete().get_is_found() {
                                     println!("{}", resp.get_delete().get_value());
                                 } else {
-                                    panic!("Key not found")
+                                    println!("Key not found");
+                                    ::std::process::exit(1);
                                 }
                                 Ok(())
                             }),

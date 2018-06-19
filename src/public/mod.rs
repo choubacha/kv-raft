@@ -32,14 +32,6 @@ pub fn set_request(key: &str, value: &str) -> Request {
     request
 }
 
-pub fn set_response() -> Response {
-    let mut response = Response::new();
-    let mut set = response::Set::new();
-    set.set_is_success(true);
-    response.set_set(set);
-    response
-}
-
 pub fn delete_request(key: &str) -> Request {
     let mut request = Request::new();
     let mut delete = request::Delete::new();
@@ -84,6 +76,36 @@ pub fn ping_request() -> Request {
 pub fn ping_response() -> Response {
     let mut response = Response::new();
     response.set_pong(true);
+    response
+}
+
+pub fn add_node_request(id: u64, addr: String, is_learner: bool) -> Request {
+    let mut request = Request::new();
+    let mut add_node = request::AddNode::new();
+    add_node.set_id(id);
+    add_node.set_addr(addr);
+    add_node.set_is_learner(is_learner);
+    request.set_add_node(add_node);
+    request
+}
+
+pub fn remove_node_request(id: u64) -> Request {
+    let mut request = Request::new();
+    let mut remove_node = request::RemoveNode::new();
+    remove_node.set_id(id);
+    request.set_remove_node(remove_node);
+    request
+}
+
+pub fn success_response() -> Response {
+    let mut response = Response::new();
+    response.set_success(true);
+    response
+}
+
+pub fn failure_response() -> Response {
+    let mut response = Response::new();
+    response.set_success(false);
     response
 }
 

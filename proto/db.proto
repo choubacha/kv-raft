@@ -12,10 +12,17 @@ message Entry {
 enum EntryKind {
   SET = 0;
   DELETE = 1;
+  CALLBACK = 2;
 }
 
 message Snap {
   repeated Datum data = 1;
+  repeated Peer peers = 2;
+}
+
+message Peer {
+  uint64 id = 1;
+  string addr = 2;
 }
 
 message Datum {

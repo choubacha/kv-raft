@@ -53,6 +53,19 @@ impl Client {
         self.send(public::delete_request(&key))
     }
 
+    pub fn add_node(
+        self,
+        id: u64,
+        addr: String,
+        is_learner: bool,
+    ) -> impl Future<Item = ClientResponse, Error = codec::Error> {
+        self.send(public::add_node_request(id, addr, is_learner))
+    }
+
+    pub fn remove_node(self, id: u64) -> impl Future<Item = ClientResponse, Error = codec::Error> {
+        self.send(public::remove_node_request(id))
+    }
+
     fn send(self, request: Request) -> impl Future<Item = ClientResponse, Error = codec::Error> {
         let sink = self.sink;
         let stream = self.stream;

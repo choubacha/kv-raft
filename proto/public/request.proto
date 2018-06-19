@@ -16,3 +16,13 @@ message Delete {
 }
 
 message Scan {}
+
+message AddNode {
+  uint64 id = 1;
+  string addr = 2;
+  bool is_learner = 3;
+}
+
+message RemoveNode {
+  uint64 id = 1;
+}

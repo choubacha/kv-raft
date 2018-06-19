@@ -296,6 +296,7 @@ impl ::protobuf::reflect::ProtobufValue for Entry {
 pub struct Snap {
     // message fields
     pub data: ::protobuf::RepeatedField<Datum>,
+    pub peers: ::protobuf::RepeatedField<Peer>,
     // special fields
     unknown_fields: ::protobuf::UnknownFields,
     cached_size: ::protobuf::CachedSize,
@@ -330,11 +331,41 @@ impl Snap {
     pub fn get_data(&self) -> &[Datum] {
         &self.data
     }
+
+    // repeated .db.Peer peers = 2;
+
+    pub fn clear_peers(&mut self) {
+        self.peers.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_peers(&mut self, v: ::protobuf::RepeatedField<Peer>) {
+        self.peers = v;
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_peers(&mut self) -> &mut ::protobuf::RepeatedField<Peer> {
+        &mut self.peers
+    }
+
+    // Take field
+    pub fn take_peers(&mut self) -> ::protobuf::RepeatedField<Peer> {
+        ::std::mem::replace(&mut self.peers, ::protobuf::RepeatedField::new())
+    }
+
+    pub fn get_peers(&self) -> &[Peer] {
+        &self.peers
+    }
 }
 
 impl ::protobuf::Message for Snap {
     fn is_initialized(&self) -> bool {
         for v in &self.data {
+            if !v.is_initialized() {
+                return false;
+            }
+        };
+        for v in &self.peers {
             if !v.is_initialized() {
                 return false;
             }
@@ -348,6 +379,9 @@ impl ::protobuf::Message for Snap {
             match field_number {
                 1 => {
                     ::protobuf::rt::read_repeated_message_into(wire_type, is, &mut self.data)?;
+                },
+                2 => {
+                    ::protobuf::rt::read_repeated_message_into(wire_type, is, &mut self.peers)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -365,6 +399,10 @@ impl ::protobuf::Message for Snap {
             let len = value.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         };
+        for value in &self.peers {
+            let len = value.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
+        };
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -373,6 +411,11 @@ impl ::protobuf::Message for Snap {
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
         for v in &self.data {
             os.write_tag(1, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+            os.write_raw_varint32(v.get_cached_size())?;
+            v.write_to_with_cached_sizes(os)?;
+        };
+        for v in &self.peers {
+            os.write_tag(2, ::protobuf::wire_format::WireTypeLengthDelimited)?;
             os.write_raw_varint32(v.get_cached_size())?;
             v.write_to_with_cached_sizes(os)?;
         };
@@ -423,6 +466,11 @@ impl ::protobuf::Message for Snap {
                     |m: &Snap| { &m.data },
                     |m: &mut Snap| { &mut m.data },
                 ));
+                fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<Peer>>(
+                    "peers",
+                    |m: &Snap| { &m.peers },
+                    |m: &mut Snap| { &mut m.peers },
+                ));
                 ::protobuf::reflect::MessageDescriptor::new::<Snap>(
                     "Snap",
                     fields,
@@ -446,6 +494,7 @@ impl ::protobuf::Message for Snap {
 impl ::protobuf::Clear for Snap {
     fn clear(&mut self) {
         self.clear_data();
+        self.clear_peers();
         self.unknown_fields.clear();
     }
 }
@@ -457,6 +506,204 @@ impl ::std::fmt::Debug for Snap {
 }
 
 impl ::protobuf::reflect::ProtobufValue for Snap {
+    fn as_ref(&self) -> ::protobuf::reflect::ProtobufValueRef {
+        ::protobuf::reflect::ProtobufValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
+pub struct Peer {
+    // message fields
+    pub id: u64,
+    pub addr: ::std::string::String,
+    // special fields
+    unknown_fields: ::protobuf::UnknownFields,
+    cached_size: ::protobuf::CachedSize,
+}
+
+impl Peer {
+    pub fn new() -> Peer {
+        ::std::default::Default::default()
+    }
+
+    // uint64 id = 1;
+
+    pub fn clear_id(&mut self) {
+        self.id = 0;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_id(&mut self, v: u64) {
+        self.id = v;
+    }
+
+    pub fn get_id(&self) -> u64 {
+        self.id
+    }
+
+    // string addr = 2;
+
+    pub fn clear_addr(&mut self) {
+        self.addr.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_addr(&mut self, v: ::std::string::String) {
+        self.addr = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_addr(&mut self) -> &mut ::std::string::String {
+        &mut self.addr
+    }
+
+    // Take field
+    pub fn take_addr(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.addr, ::std::string::String::new())
+    }
+
+    pub fn get_addr(&self) -> &str {
+        &self.addr
+    }
+}
+
+impl ::protobuf::Message for Peer {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_uint64()?;
+                    self.id = tmp;
+                },
+                2 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.addr)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if self.id != 0 {
+            my_size += ::protobuf::rt::value_size(1, self.id, ::protobuf::wire_format::WireTypeVarint);
+        }
+        if !self.addr.is_empty() {
+            my_size += ::protobuf::rt::string_size(2, &self.addr);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
+        if self.id != 0 {
+            os.write_uint64(1, self.id)?;
+        }
+        if !self.addr.is_empty() {
+            os.write_string(2, &self.addr)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &::std::any::Any {
+        self as &::std::any::Any
+    }
+    fn as_any_mut(&mut self) -> &mut ::std::any::Any {
+        self as &mut ::std::any::Any
+    }
+    fn into_any(self: Box<Self>) -> ::std::boxed::Box<::std::any::Any> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        Self::descriptor_static()
+    }
+
+    fn new() -> Peer {
+        Peer::new()
+    }
+
+    fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
+        static mut descriptor: ::protobuf::lazy::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::lazy::Lazy {
+            lock: ::protobuf::lazy::ONCE_INIT,
+            ptr: 0 as *const ::protobuf::reflect::MessageDescriptor,
+        };
+        unsafe {
+            descriptor.get(|| {
+                let mut fields = ::std::vec::Vec::new();
+                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
+                    "id",
+                    |m: &Peer| { &m.id },
+                    |m: &mut Peer| { &mut m.id },
+                ));
+                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                    "addr",
+                    |m: &Peer| { &m.addr },
+                    |m: &mut Peer| { &mut m.addr },
+                ));
+                ::protobuf::reflect::MessageDescriptor::new::<Peer>(
+                    "Peer",
+                    fields,
+                    file_descriptor_proto()
+                )
+            })
+        }
+    }
+
+    fn default_instance() -> &'static Peer {
+        static mut instance: ::protobuf::lazy::Lazy<Peer> = ::protobuf::lazy::Lazy {
+            lock: ::protobuf::lazy::ONCE_INIT,
+            ptr: 0 as *const Peer,
+        };
+        unsafe {
+            instance.get(Peer::new)
+        }
+    }
+}
+
+impl ::protobuf::Clear for Peer {
+    fn clear(&mut self) {
+        self.clear_id();
+        self.clear_addr();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for Peer {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for Peer {
     fn as_ref(&self) -> ::protobuf::reflect::ProtobufValueRef {
         ::protobuf::reflect::ProtobufValueRef::Message(self)
     }
@@ -671,6 +918,7 @@ impl ::protobuf::reflect::ProtobufValue for Datum {
 pub enum EntryKind {
     SET = 0,
     DELETE = 1,
+    CALLBACK = 2,
 }
 
 impl ::protobuf::ProtobufEnum for EntryKind {
@@ -682,6 +930,7 @@ impl ::protobuf::ProtobufEnum for EntryKind {
         match value {
             0 => ::std::option::Option::Some(EntryKind::SET),
             1 => ::std::option::Option::Some(EntryKind::DELETE),
+            2 => ::std::option::Option::Some(EntryKind::CALLBACK),
             _ => ::std::option::Option::None
         }
     }
@@ -690,6 +939,7 @@ impl ::protobuf::ProtobufEnum for EntryKind {
         static values: &'static [EntryKind] = &[
             EntryKind::SET,
             EntryKind::DELETE,
+            EntryKind::CALLBACK,
         ];
         values
     }
@@ -726,10 +976,13 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x08db.proto\x12\x02db\"b\n\x05Entry\x12\x0e\n\x02id\x18\x01\x20\x01(\
     \x04R\x02id\x12\x10\n\x03key\x18\x02\x20\x01(\tR\x03key\x12\x14\n\x05val\
     ue\x18\x03\x20\x01(\tR\x05value\x12!\n\x04kind\x18\x04\x20\x01(\x0e2\r.d\
-    b.EntryKindR\x04kind\"%\n\x04Snap\x12\x1d\n\x04data\x18\x01\x20\x03(\x0b\
-    2\t.db.DatumR\x04data\"/\n\x05Datum\x12\x10\n\x03key\x18\x01\x20\x01(\tR\
-    \x03key\x12\x14\n\x05value\x18\x02\x20\x01(\tR\x05value*\x20\n\tEntryKin\
-    d\x12\x07\n\x03SET\x10\0\x12\n\n\x06DELETE\x10\x01b\x06proto3\
+    b.EntryKindR\x04kind\"E\n\x04Snap\x12\x1d\n\x04data\x18\x01\x20\x03(\x0b\
+    2\t.db.DatumR\x04data\x12\x1e\n\x05peers\x18\x02\x20\x03(\x0b2\x08.db.Pe\
+    erR\x05peers\"*\n\x04Peer\x12\x0e\n\x02id\x18\x01\x20\x01(\x04R\x02id\
+    \x12\x12\n\x04addr\x18\x02\x20\x01(\tR\x04addr\"/\n\x05Datum\x12\x10\n\
+    \x03key\x18\x01\x20\x01(\tR\x03key\x12\x14\n\x05value\x18\x02\x20\x01(\t\
+    R\x05value*.\n\tEntryKind\x12\x07\n\x03SET\x10\0\x12\n\n\x06DELETE\x10\
+    \x01\x12\x0c\n\x08CALLBACK\x10\x02b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

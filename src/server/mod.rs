@@ -23,19 +23,6 @@ pub struct Server {
     peer: peer::Handle,
 }
 
-const PUBLIC_PORT: u16 = 9000;
-
-pub struct Peer {
-    id: u64,
-    addr: SocketAddr,
-}
-
-impl Peer {
-    pub fn new(id: u64, addr: SocketAddr) -> Peer {
-        Peer { id, addr }
-    }
-}
-
 impl Server {
     /// Starts a server and returns a handle to it.
     ///
@@ -43,17 +30,13 @@ impl Server {
     /// data is ignored and managed via the network. An improvement would be
     /// to all peers to be added and pass their context down with the raft
     /// message.
-    pub fn start(id: u64, file: &str, peer_addr: &SocketAddr, peers: &[Peer]) -> Server {
-        let pub_addr = SocketAddr::new("0.0.0.0".parse().unwrap(), PUBLIC_PORT);
+    pub fn start(id: u64, file: &str, peer_addr: &SocketAddr) -> Server {
+        let pub_addr = SocketAddr::new("0.0.0.0".parse().unwrap(), 9000);
 
         let mut network = network::start();
 
-        // Starts up the network with peers. This helps to
-        // broadcast out to peers.
+        // Always add self to the network
         ::tokio::run(network.add(id, &peer_addr));
-        for peer in peers {
-            ::tokio::run(network.add(peer.id, &peer.addr));
-        }
 
         let db = db::Db::new(id, &file, network).start();
         let public = public::listen(db.channel(), &pub_addr);
@@ -64,7 +47,7 @@ impl Server {
 
     pub fn join(self) {
         self.db.join();
-        self.public.join();
         self.peer.join();
+        self.public.join();
     }
 }

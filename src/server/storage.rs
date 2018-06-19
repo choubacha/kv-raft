@@ -12,6 +12,7 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 /// system comes back as ok, which in async is tough.
 pub struct KeyValueCore {
     data: HashMap<String, String>,
+    peers: Vec<proto::Peer>,
     file: PathBuf,
     mem: MemStorage,
 }
@@ -22,6 +23,7 @@ impl KeyValueCore {
             data: HashMap::new(),
             mem: MemStorage::new(),
             file,
+            peers: Vec::new(),
         };
         if core.file.is_file() {
             let mut handle = File::open(&core.file).unwrap();
@@ -63,6 +65,7 @@ impl KeyValueCore {
             let value = datum.get_value().to_string();
             data.insert(key, value);
         }
+        self.peers = snap.get_peers().iter().map(|p| p.clone()).collect();
         self.data = data;
         self.mem.wl().apply_snapshot(snapshot)
     }
@@ -73,6 +76,25 @@ impl KeyValueCore {
 
     pub fn set_hardstate(&mut self, hs: HardState) {
         self.mem.wl().set_hardstate(hs);
+    }
+
+    pub fn add_node(&mut self, peer: proto::Peer) {
+        if self.peers.iter().any(|p| &peer == p) {
+            // Already added
+            return;
+        }
+
+        self.peers.push(peer);
+    }
+
+    pub fn remove_node(&mut self, id: u64) {
+        if let Some(index) = self.peers.iter().position(|p| p.id == id) {
+            self.peers.remove(index);
+        }
+    }
+
+    pub fn peers(&self) -> &[proto::Peer] {
+        &self.peers[..]
     }
 
     pub fn create_snapshot<'a>(&'a mut self, idx: u64, cs: Option<ConfState>) {
@@ -103,6 +125,7 @@ impl KeyValueCore {
             data.push(datum)
         }
         snap.set_data(data.into());
+        snap.set_peers(self.peers.clone().into());
         snap
     }
 }

@@ -1,3 +1,4 @@
+use super::proto;
 use codec::Proto;
 use futures::prelude::*;
 use futures::sync::mpsc;
@@ -5,6 +6,7 @@ use raft;
 use raft::raw_node::Peer as RaftPeer;
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::net::ToSocketAddrs;
 use std::thread::{self, JoinHandle};
 use tokio;
 use tokio::net::TcpStream;
@@ -47,6 +49,17 @@ impl Handle {
                 context: None,
             })
             .collect()
+    }
+
+    pub fn add_peer(
+        &mut self,
+        peer: &proto::Peer,
+    ) -> Result<impl Future<Item = (), Error = ()>, ()> {
+        if let Ok(Some(addr)) = peer.get_addr().to_socket_addrs().map(|mut i| i.next()) {
+            Ok(self.add(peer.get_id(), &addr))
+        } else {
+            Err(())
+        }
     }
 
     pub fn add(&mut self, id: u64, addr: &SocketAddr) -> impl Future<Item = (), Error = ()> {

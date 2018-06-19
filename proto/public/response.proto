@@ -7,10 +7,6 @@ message Get {
   bool is_found = 2;
 }
 
-message Set {
-  bool is_success = 1;
-}
-
 message Delete {
   string value = 1;
   bool is_found = 2;
