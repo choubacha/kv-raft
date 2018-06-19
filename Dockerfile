@@ -13,8 +13,8 @@ RUN apt-get -y update && apt-get -y install protobuf-compiler
 # Build actual source
 ADD . .
 
-RUN cargo build
+RUN cargo build --release
 
 RUN mkdir /data
 
-WORKDIR /app/target/debug
+WORKDIR /app/target/release
