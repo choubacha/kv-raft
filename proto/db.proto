@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package db;
+
+message Entry {
+  uint64 id = 1;
+  string key = 2;
+  string value = 3;
+  EntryKind kind = 4;
+}
+
+enum EntryKind {
+  SET = 0;
+  DELETE = 1;
+}
+
+message Snap {
+  repeated Datum data = 1;
+}
+
+message Datum {
+  string key = 1;
+  string value = 2;
+}

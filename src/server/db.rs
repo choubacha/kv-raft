@@ -1,9 +1,9 @@
-use super::{network, proto, public::Command, Message};
+use super::{network, proto, public::Command, storage::KeyValue, Message};
 use futures::sync::mpsc;
 use futures::Stream;
 use protobuf::parse_from_bytes;
 use public;
-use raft::{self, eraftpb::EntryType, raw_node::RawNode, storage::MemStorage, Config};
+use raft::{self, prelude::*};
 use std::collections::HashMap;
 use std::num::Wrapping;
 use std::thread::{self, JoinHandle};
@@ -113,15 +113,13 @@ mod callback_tests {
 /// The database does not communicate on a network but instead uses
 /// a set of channels to communicate.
 pub struct Db {
-    state: HashMap<String, String>,
-    node: RawNode<MemStorage>,
+    node: RawNode<KeyValue>,
     network: network::Handle,
     callbacks: Callbacks,
 }
 
 impl Db {
     pub fn new(id: u64, network: network::Handle) -> Db {
-        let state = HashMap::new();
         let config = Config {
             id,
             heartbeat_tick: 1,
@@ -132,11 +130,10 @@ impl Db {
         };
         config.validate().unwrap();
 
-        let node = RawNode::new(&config, MemStorage::default(), network.peers()).unwrap();
+        let node = RawNode::new(&config, KeyValue::new("./data"), network.peers()).unwrap();
         let callbacks = Callbacks::new();
 
         Db {
-            state,
             network,
             node,
             callbacks,
@@ -199,13 +196,13 @@ impl Db {
     fn handle_get(&self, command: Command) {
         let value = {
             let get = command.request().get_get();
-            self.state.get(get.get_key()).map(String::to_owned)
+            self.node.get_store().rl().get(get.get_key())
         };
         command.reply(public::get_response(value));
     }
 
     fn handle_scan(&self, command: Command) {
-        let keys = self.state.keys().map(|s| s.to_owned()).collect();
+        let keys = self.node.get_store().rl().scan();
         command.reply(public::scan_response(keys));
     }
 
@@ -283,13 +280,14 @@ impl Db {
         }
 
         if let Some(committed_entries) = ready.committed_entries.take() {
-            let mut _last_apply_index = 0;
+            let mut last_apply_index = 0;
+            let mut conf_state: Option<ConfState> = None;
             for entry in committed_entries {
                 println!("Updating state based on entry...");
 
                 // Mostly, you need to save the last apply index to resume applying
                 // after restart. Here we just ignore this because we use a Memory storage.
-                _last_apply_index = entry.get_index();
+                last_apply_index = entry.get_index();
 
                 let data = entry.get_data();
 
@@ -305,12 +303,12 @@ impl Db {
 
                         let response = match entry.kind {
                             proto::EntryKind::SET => {
-                                self.state.insert(entry.key.clone(), entry.value.clone());
+                                self.node.mut_store().wl().set(&entry.key, &entry.value);
                                 public::set_response()
                             }
-                            proto::EntryKind::DELETE => {
-                                public::delete_response(self.state.remove(&entry.key))
-                            }
+                            proto::EntryKind::DELETE => public::delete_response(
+                                self.node.mut_store().wl().delete(&entry.key),
+                            ),
                         };
 
                         if let Some(cmd) = self.callbacks.get(entry.id) {
@@ -318,9 +316,19 @@ impl Db {
                         }
                     }
                     EntryType::EntryConfChange => {
-                        println!("Some conf change");
+                        let cc = parse_from_bytes::<ConfChange>(data).expect("Valid protobuf");
+                        conf_state = Some(self.node.apply_conf_change(&cc));
+                        println!("Updated state: {:?}", conf_state);
                     }
                 }
+            }
+
+            let mut mem = self.node.mut_store().wl();
+            mem.create_snapshot(last_apply_index, conf_state);
+
+            // Now that we have a snapshot, let's compact out the rest
+            if last_apply_index > 0 {
+                mem.compact(last_apply_index - 1).unwrap();
             }
         }
         self.node.advance(ready);

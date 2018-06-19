@@ -1,4 +1,3 @@
-mod entry;
+mod db;
 
-pub use self::entry::Entry;
-pub use self::entry::Kind as EntryKind;
+pub use self::db::*;

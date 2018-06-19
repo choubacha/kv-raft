@@ -11,7 +11,6 @@ command is desired.
 
 This is done with a framed codec against tcp.
 
-
 The client will have a single ip address to connect to first, if there's time we could
 have a command that will fetch the current peer list and it could use those to distribute
 it's queries. As is, it will use tokio to do the request and response but will do so in a
@@ -74,3 +73,10 @@ checks. Timeouts are done on the command channel.
 While everything above can be handled with memory storage, the goal is also to persist changes
 to disk. To do that we'll need to implement the storage trait for raft. We'll just write
 things to various protobufs.
+
+The storage module is written so that only upon snapshots are things considered persisted. This
+guarantees that the data in a snapshot is what will be restored.
+
+It uses the provided memory storage to manage the entries, instead of rebuilding it. However,
+this is wrapped behind a layer that writes to disk. It's the snap shots that actually persist
+and they will block the main execution loop.

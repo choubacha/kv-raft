@@ -6,6 +6,7 @@ mod network;
 mod peer;
 mod proto;
 mod public;
+mod storage;
 
 #[derive(Debug)]
 pub enum Message {
