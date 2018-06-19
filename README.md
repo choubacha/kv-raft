@@ -94,32 +94,8 @@ This will start 3 servers that are not connected at first. You can get them to c
 connecting them in order. We need to get them to agree on the leader and that can
 take some restarts to get correct. 2 nodes can end up going back and forth on the election.
 
-```bash
-# Add node 2
-./target/debug/client -h 0.0.0.0:19001 add_node 2 db2:9002
-
-# Restart to create a leaderless node 1
-docker-compose restart db1
-
-# Now we add db1 to db2 and db2 becomes leader
-./target/debug/client -h 0.0.0.0:19002 add_node 1 db1:9001
-
-# Also add each other to get them in the db
-./target/debug/client -h 0.0.0.0:19002 add_node 2 db2:9002
-./target/debug/client -h 0.0.0.0:19001 add_node 1 db1:9001
-
-# Now we can add db3 to db2 and db1
-./target/debug/client -h 0.0.0.0:19002 add_node 3 db3:9003
-./target/debug/client -h 0.0.0.0:19001 add_node 3 db3:9003
-
-# Now we need db3 to know about the others. To do that we add one node
-./target/debug/client -h 0.0.0.0:19003 add_node 1 db1:9001
-docker-composer restart db3
-./target/debug/client -h 0.0.0.0:19003 add_node 2 db2:9002
-```
-
-This has also been build into a shell script to reset the db. After this, however, so long
-as the container's volumes are not deleted, the db can be restarted and nodes can be removed.
+To simplify it, there's a reset.sh script. Run this from the cli to build the docker cluster
+and stand it up.
 
 All commands can be done using the client binary, include `set`, `delete`, `scan`, `add_node`,
 `remove_node`, and `ping`.

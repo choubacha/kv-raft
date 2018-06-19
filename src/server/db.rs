@@ -429,7 +429,6 @@ impl Db {
             let mut mem = self.node.mut_store().wl();
             mem.create_snapshot(last_apply_index, conf_state);
         }
-        let status = self.node.status();
         println!("leader: {}", self.node.raft.leader_id);
         self.node.advance(ready);
     }
