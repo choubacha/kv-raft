@@ -163,6 +163,59 @@ fn main() {
                             }),
                     );
                 }
+                ("bench", Some(_)) => {
+                    println!("Add a bunch of keys!");
+                    use futures::future::{loop_fn, Loop};
+                    use std::time::Instant;
+
+                    let start = Instant::now();
+
+                    ::tokio::spawn(
+                        loop_fn((client, 0), |(client, count)| {
+                            client
+                                .set(&format!("key-{}", count), &format!("value-{}", count))
+                                .map_err(|e| println!("err while setting: {:?}", e))
+                                .and_then(move |(client, _)| {
+                                    if count % 100 == 0 {
+                                        println!("{} set", count);
+                                    }
+
+                                    if count > 1000 {
+                                        Ok(Loop::Break(client))
+                                    } else {
+                                        Ok(Loop::Continue((client, count + 1)))
+                                    }
+                                })
+                        })
+                        .map(move |client| {
+                            println!("elapsed: {:?}", start.elapsed());
+                            client
+                        })
+                        .and_then(move |client| {
+                            let start = Instant::now();
+                            loop_fn((client, 0), move |(client, count)| {
+                                client
+                                    .get(&format!("key-{}", count))
+                                    .map_err(|e| println!("err while setting: {:?}", e))
+                                    .and_then(move |(client, _)| {
+                                        if count % 100 == 0 {
+                                            println!("{} gotten", count);
+                                        }
+
+                                        if count > 100000 {
+                                            Ok(Loop::Break((client, start.elapsed())))
+                                        } else {
+                                            Ok(Loop::Continue((client, count + 1)))
+                                        }
+                                    })
+                            })
+                        })
+                        .and_then(move |(_, duration)| {
+                            println!("get elapsed: {:?}", duration);
+                            Ok(())
+                        })
+                    );
+                }
                 _ => panic!("No option chosen"),
             }
             Ok(())
