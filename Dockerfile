@@ -15,4 +15,6 @@ ADD . .
 
 RUN cargo build
 
+RUN mkdir /data
+
 WORKDIR /app/target/debug

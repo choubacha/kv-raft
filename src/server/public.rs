@@ -59,10 +59,7 @@ pub fn listen(db_channel: mpsc::Sender<Message>, addr: &SocketAddr) -> Handle {
                 tokio::spawn(
                     stream
                         .map_err(handle_err)
-                        .map(move |request| {
-                            println!("Request: {:?}", request);
-                            Message::Cmd(Command::new(tx.clone(), request))
-                        })
+                        .map(move |request| Message::Cmd(Command::new(tx.clone(), request)))
                         .forward(db_channel.clone().sink_map_err(handle_err))
                         .then(|_| Ok(())),
                 );

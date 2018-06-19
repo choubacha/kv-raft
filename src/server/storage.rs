@@ -32,7 +32,7 @@ impl KeyValueCore {
 
             // This could OOM the device if the raft gets too large
             let snap = parse_from_bytes::<Snapshot>(&buf).expect("Db corrupt");
-            core.apply_snapshot(snap);
+            core.apply_snapshot(snap).unwrap();
         }
         core
     }

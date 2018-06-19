@@ -119,7 +119,7 @@ pub struct Db {
 }
 
 impl Db {
-    pub fn new(id: u64, network: network::Handle) -> Db {
+    pub fn new(id: u64, file: &str, network: network::Handle) -> Db {
         let config = Config {
             id,
             heartbeat_tick: 1,
@@ -130,7 +130,7 @@ impl Db {
         };
         config.validate().unwrap();
 
-        let node = RawNode::new(&config, KeyValue::new("./data"), network.peers()).unwrap();
+        let node = RawNode::new(&config, KeyValue::new(file), network.peers()).unwrap();
         let callbacks = Callbacks::new();
 
         Db {
@@ -327,9 +327,9 @@ impl Db {
             mem.create_snapshot(last_apply_index, conf_state);
 
             // Now that we have a snapshot, let's compact out the rest
-            if last_apply_index > 0 {
-                mem.compact(last_apply_index - 1).unwrap();
-            }
+            // if last_apply_index > 0 {
+            //    mem.compact(last_apply_index - 1).unwrap();
+            //}
         }
         self.node.advance(ready);
     }
@@ -349,7 +349,7 @@ mod tests {
     fn test_start_and_stop() {
         let network = network::start();
 
-        let db = Db::new(1, network);
+        let db = Db::new(1, "/tmp/data", network);
         let handle = db.start();
         let channel = handle.channel();
 

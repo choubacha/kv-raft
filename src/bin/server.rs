@@ -15,6 +15,12 @@ fn main() {
                 .short("p")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("data-file")
+                .long("data-file")
+                .short("f")
+                .takes_value(true),
+        )
         .arg(Arg::with_name("PEER").multiple(true).takes_value(true))
         .get_matches();
 
@@ -25,8 +31,6 @@ fn main() {
             .map(|value| {
                 // Simple parsing of each peer into a value
                 let parts: Vec<&str> = value.splitn(2, '-').collect();
-
-                println!("peer: {:?}", parts);
 
                 match &parts[..] {
                     [id, addr] => Peer::new(
@@ -45,6 +49,8 @@ fn main() {
         .value_of("peer-on")
         .unwrap_or("0.0.0.0:9001")
         .parse()
-        .unwrap();
-    Server::start(id, &peer_on, &peers).join();
+        .expect("Could not connect to peer network");
+
+    let file = matches.value_of("data-file").unwrap_or("/tmp/data");
+    Server::start(id, &file, &peer_on, &peers).join();
 }
