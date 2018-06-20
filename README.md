@@ -97,5 +97,17 @@ take some restarts to get correct. 2 nodes can end up going back and forth on th
 To simplify it, there's a reset.sh script. Run this from the cli to build the docker cluster
 and stand it up.
 
+The trick appears to be to stand up one, get it to elect itself. This will allow you to propose
+conf changes like adding a node. Add the node and it will try to start the election. However,
+if both nodes think that they are the leader we get into a cycle which requires an interrupt
+such one wins, that's what I'm using a restart for.
+
 All commands can be done using the client binary, include `set`, `delete`, `scan`, `add_node`,
-`remove_node`, and `ping`.
+`remove_node`, `info`, and `ping`.
+
+These were mapped to the CLI as well allowing you to interact from the CLI. `info` is very useful
+for connecting new machines because it tells you the status of whatever node you are asking for.
+
+When a node dies, it can rejoin and "catch up" in the logs. However, if it's very far behind, it
+can be faster to remove it complete, kill it, and add it as a new node. This will allow it to
+catch-up via a snap shot from another node instead.

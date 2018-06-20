@@ -79,7 +79,7 @@ impl KeyValueCore {
     }
 
     pub fn add_node(&mut self, peer: proto::Peer) {
-        if self.peers.iter().any(|p| &peer == p) {
+        if peer.get_id() == 0 || self.peers.iter().any(|p| &peer == p) {
             // Already added
             return;
         }
@@ -98,16 +98,19 @@ impl KeyValueCore {
     }
 
     pub fn create_snapshot<'a>(&'a mut self, idx: u64, cs: Option<ConfState>) {
-        let snap = self.to_snap()
+        let data = self.to_snap()
             .write_to_bytes()
             .expect("Unexpected marshal err");
 
-        if let Ok(snap) = self.mem.wl().create_snapshot(idx, cs, snap) {
+        if let Ok(snap) = self.mem.wl().create_snapshot(idx, cs, data) {
             use std::io::Write;
 
             let bytes = snap.write_to_bytes().unwrap();
             let mut file = File::create(&self.file).unwrap();
             file.write_all(&bytes).unwrap();
+            println!("Snap written to disk");
+        } else {
+            println!("Snap not created");
         }
     }
 

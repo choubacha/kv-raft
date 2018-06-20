@@ -28,6 +28,6 @@ fn main() {
         .unwrap_or("0.0.0.0:9001")
         .to_string();
 
-    let file = matches.value_of("data-file").unwrap_or("/tmp/data");
+    let file = matches.value_of("data-file").unwrap_or("/data/data");
     Server::start(id, &file, peer_on).join();
 }

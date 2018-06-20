@@ -55,6 +55,7 @@ impl Handle {
     }
 
     pub fn add(&mut self, id: u64, addr: String) -> impl Future<Item = (), Error = ()> {
+        assert!(id > 0);
         self.ids.push(id);
         self.tx
             .clone()

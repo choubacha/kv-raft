@@ -239,6 +239,7 @@ impl Db {
             .iter()
             .map(|p| p.id)
             .collect();
+
         info.set_peers(peers.into());
 
         response.set_info(info);
@@ -373,8 +374,6 @@ impl Db {
             let mut last_apply_index = 0;
             let mut conf_state: Option<ConfState> = None;
             for entry in committed_entries {
-                // Mostly, you need to save the last apply index to resume applying
-                // after restart. Here we just ignore this because we use a Memory storage.
                 last_apply_index = entry.get_index();
 
                 let data = entry.get_data();
@@ -407,7 +406,6 @@ impl Db {
                     }
                     EntryType::EntryConfChange => {
                         let cc = parse_from_bytes::<ConfChange>(data).expect("Valid protobuf");
-                        println!("Updated state: {:?}", conf_state);
 
                         match cc.get_change_type() {
                             ConfChangeType::AddNode => {
@@ -433,11 +431,15 @@ impl Db {
                 }
             }
 
-            let mut mem = self.node.mut_store().wl();
-            mem.create_snapshot(last_apply_index, conf_state);
+            if last_apply_index > 0 {
+                let mut mem = self.node.mut_store().wl();
+                mem.create_snapshot(last_apply_index, conf_state);
+            }
         }
 
         self.node.advance(ready);
+        let raft_applied = self.node.raft.raft_log.get_applied();
+        let _ = self.node.mut_store().wl().compact(raft_applied);
     }
 
     fn is_leader(&self) -> bool {
