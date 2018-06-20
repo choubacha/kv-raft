@@ -131,19 +131,16 @@ impl Db {
     pub fn new(id: u64, file: &str, mut network: network::Handle) -> Db {
         let config = Config {
             id,
-            heartbeat_tick: 1,
+            heartbeat_tick: 3,
             election_tick: 10,
             max_inflight_msgs: 1024,
-            pre_vote: true,
             ..Config::default()
         };
         config.validate().unwrap();
 
         let store = KeyValue::new(file);
         for peer in store.rl().peers() {
-            if let Ok(peer) = network.add_peer(&peer) {
-                tokio::run(peer);
-            }
+            tokio::run(network.add_peer(&peer));
         }
 
         let node = RawNode::new(&config, store, network.peers()).unwrap();
@@ -174,7 +171,6 @@ impl Db {
                         }
                         Message::Cmd(command) => self.handle(command),
                         Message::Raft(message) => {
-                            println!("Received raft message...");
                             self.node.step(message).unwrap();
                         }
                         Message::Ping => {
@@ -210,6 +206,8 @@ impl Db {
             self.handle_add_node(command);
         } else if command.request().has_remove_node() {
             self.handle_remove_node(command);
+        } else if command.request().has_info() {
+            self.handle_info(command);
         }
     }
 
@@ -224,6 +222,28 @@ impl Db {
     fn handle_scan(&self, command: Command) {
         let keys = self.node.get_store().rl().scan();
         command.reply(public::scan_response(keys));
+    }
+
+    fn handle_info(&self, command: Command) {
+        let mut response = public::Response::new();
+        let mut info = public::response::Info::new();
+        info.set_id(self.node.raft.id);
+        info.set_leader_id(self.node.raft.leader_id);
+        info.set_term(self.node.raft.term);
+        info.set_applied(self.node.raft.raft_log.get_applied());
+
+        let peers: Vec<u64> = self.node
+            .get_store()
+            .rl()
+            .peers()
+            .iter()
+            .map(|p| p.id)
+            .collect();
+        info.set_peers(peers.into());
+
+        response.set_info(info);
+
+        command.reply(response);
     }
 
     fn handle_set(&mut self, command: Command) {
@@ -257,29 +277,25 @@ impl Db {
             peer
         };
 
-        if let Ok(task) = self.network.add_peer(&peer) {
-            tokio::spawn(task);
+        tokio::spawn(self.network.add_peer(&peer));
 
-            let mut cc = ConfChange::new();
-            cc.set_id(self.node.raft.id);
-            cc.set_change_type(ConfChangeType::AddNode);
-            cc.set_node_id(peer.get_id());
+        let mut cc = ConfChange::new();
+        cc.set_id(self.node.raft.id);
+        cc.set_change_type(ConfChangeType::AddNode);
+        cc.set_node_id(peer.get_id());
 
-            cc.set_context(peer.write_to_bytes().expect("Peer should have serialize"));
+        cc.set_context(peer.write_to_bytes().expect("Peer should have serialize"));
 
-            let entry = self.callbacks.store(command);
+        let entry = self.callbacks.store(command);
 
-            // Context stores the callback entry, but also the ConfChange
-            if self.node
-                .propose_conf_change(entry.write_to_bytes().unwrap(), cc)
-                .is_err()
-            {
-                self.callbacks
-                    .get(entry.id)
-                    .map(|cb| cb.reply(public::failure_response()));
-            }
-        } else {
-            command.reply(public::failure_response());
+        // Context stores the callback entry, but also the ConfChange
+        if self.node
+            .propose_conf_change(entry.write_to_bytes().unwrap(), cc)
+            .is_err()
+        {
+            self.callbacks
+                .get(entry.id)
+                .map(|cb| cb.reply(public::failure_response()));
         }
     }
 
@@ -315,8 +331,6 @@ impl Db {
             return;
         }
 
-        println!("Raft is ready...");
-
         // The Raft is ready, we can do something now.
         let mut ready = self.node.ready();
 
@@ -331,7 +345,6 @@ impl Db {
         }
 
         if !raft::is_empty_snap(&ready.snapshot) {
-            println!("Applying snap shot");
             self.node
                 .mut_store()
                 .wl()
@@ -340,13 +353,10 @@ impl Db {
         }
 
         if !ready.entries.is_empty() {
-            println!("Saving entries...");
             self.node.mut_store().wl().append(&ready.entries).unwrap();
         }
 
         if let Some(ref hs) = ready.hs {
-            println!("Save hardstate...");
-
             // Raft HardState changed, and we need to persist it.
             self.node.mut_store().wl().set_hardstate(hs.clone());
         }
@@ -363,9 +373,6 @@ impl Db {
             let mut last_apply_index = 0;
             let mut conf_state: Option<ConfState> = None;
             for entry in committed_entries {
-                println!("Updating state based on entry...");
-                println!("entry: {:?}", entry);
-
                 // Mostly, you need to save the last apply index to resume applying
                 // after restart. Here we just ignore this because we use a Memory storage.
                 last_apply_index = entry.get_index();
@@ -429,7 +436,7 @@ impl Db {
             let mut mem = self.node.mut_store().wl();
             mem.create_snapshot(last_apply_index, conf_state);
         }
-        println!("leader: {}", self.node.raft.leader_id);
+
         self.node.advance(ready);
     }
 

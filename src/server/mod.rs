@@ -30,17 +30,17 @@ impl Server {
     /// data is ignored and managed via the network. An improvement would be
     /// to all peers to be added and pass their context down with the raft
     /// message.
-    pub fn start(id: u64, file: &str, peer_addr: &SocketAddr) -> Server {
+    pub fn start(id: u64, file: &str, peer_addr: String) -> Server {
         let pub_addr = SocketAddr::new("0.0.0.0".parse().unwrap(), 9000);
 
         let mut network = network::start();
 
         // Always add self to the network
-        ::tokio::run(network.add(id, &peer_addr));
+        ::tokio::run(network.add(id, peer_addr.clone()));
 
         let db = db::Db::new(id, &file, network).start();
         let public = public::listen(db.channel(), &pub_addr);
-        let peer = peer::listen(db.channel(), &peer_addr);
+        let peer = peer::listen(db.channel(), &peer_addr.parse().unwrap());
 
         Server { db, public, peer }
     }

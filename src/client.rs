@@ -49,6 +49,10 @@ impl Client {
         self.send(public::scan_request())
     }
 
+    pub fn info(self) -> impl Future<Item = ClientResponse, Error = codec::Error> {
+        self.send(public::info_request())
+    }
+
     pub fn delete(self, key: &str) -> impl Future<Item = ClientResponse, Error = codec::Error> {
         self.send(public::delete_request(&key))
     }

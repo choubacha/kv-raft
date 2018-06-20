@@ -15,3 +15,11 @@ message Delete {
 message Scan {
   repeated string keys = 1;
 }
+
+message Info {
+  uint64 id = 1;
+  uint64 leader_id = 2;
+  uint64 term = 3;
+  uint64 applied = 4;
+  repeated uint64 peers = 5;
+}

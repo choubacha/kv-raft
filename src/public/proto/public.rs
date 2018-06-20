@@ -39,6 +39,7 @@ pub enum Request_oneof_kind {
     ping(bool),
     add_node(super::request::AddNode),
     remove_node(super::request::RemoveNode),
+    info(super::request::Info),
 }
 
 impl Request {
@@ -364,6 +365,55 @@ impl Request {
             _ => super::request::RemoveNode::default_instance(),
         }
     }
+
+    // .public.request.Info info = 8;
+
+    pub fn clear_info(&mut self) {
+        self.kind = ::std::option::Option::None;
+    }
+
+    pub fn has_info(&self) -> bool {
+        match self.kind {
+            ::std::option::Option::Some(Request_oneof_kind::info(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_info(&mut self, v: super::request::Info) {
+        self.kind = ::std::option::Option::Some(Request_oneof_kind::info(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_info(&mut self) -> &mut super::request::Info {
+        if let ::std::option::Option::Some(Request_oneof_kind::info(_)) = self.kind {
+        } else {
+            self.kind = ::std::option::Option::Some(Request_oneof_kind::info(super::request::Info::new()));
+        }
+        match self.kind {
+            ::std::option::Option::Some(Request_oneof_kind::info(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_info(&mut self) -> super::request::Info {
+        if self.has_info() {
+            match self.kind.take() {
+                ::std::option::Option::Some(Request_oneof_kind::info(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            super::request::Info::new()
+        }
+    }
+
+    pub fn get_info(&self) -> &super::request::Info {
+        match self.kind {
+            ::std::option::Option::Some(Request_oneof_kind::info(ref v)) => v,
+            _ => super::request::Info::default_instance(),
+        }
+    }
 }
 
 impl ::protobuf::Message for Request {
@@ -394,6 +444,11 @@ impl ::protobuf::Message for Request {
             }
         }
         if let Some(Request_oneof_kind::remove_node(ref v)) = self.kind {
+            if !v.is_initialized() {
+                return false;
+            }
+        }
+        if let Some(Request_oneof_kind::info(ref v)) = self.kind {
             if !v.is_initialized() {
                 return false;
             }
@@ -447,6 +502,12 @@ impl ::protobuf::Message for Request {
                     }
                     self.kind = ::std::option::Option::Some(Request_oneof_kind::remove_node(is.read_message()?));
                 },
+                8 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    self.kind = ::std::option::Option::Some(Request_oneof_kind::info(is.read_message()?));
+                },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
                 },
@@ -485,6 +546,10 @@ impl ::protobuf::Message for Request {
                     my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
                 },
                 &Request_oneof_kind::remove_node(ref v) => {
+                    let len = v.compute_size();
+                    my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
+                },
+                &Request_oneof_kind::info(ref v) => {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
                 },
@@ -528,6 +593,11 @@ impl ::protobuf::Message for Request {
                 },
                 &Request_oneof_kind::remove_node(ref v) => {
                     os.write_tag(7, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+                    os.write_raw_varint32(v.get_cached_size())?;
+                    v.write_to_with_cached_sizes(os)?;
+                },
+                &Request_oneof_kind::info(ref v) => {
+                    os.write_tag(8, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
@@ -610,6 +680,11 @@ impl ::protobuf::Message for Request {
                     Request::has_remove_node,
                     Request::get_remove_node,
                 ));
+                fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, super::request::Info>(
+                    "info",
+                    Request::has_info,
+                    Request::get_info,
+                ));
                 ::protobuf::reflect::MessageDescriptor::new::<Request>(
                     "Request",
                     fields,
@@ -639,6 +714,7 @@ impl ::protobuf::Clear for Request {
         self.clear_ping();
         self.clear_add_node();
         self.clear_remove_node();
+        self.clear_info();
         self.unknown_fields.clear();
     }
 }
@@ -671,6 +747,7 @@ pub enum Response_oneof_kind {
     scan(super::response::Scan),
     pong(bool),
     success(bool),
+    info(super::response::Info),
 }
 
 impl Response {
@@ -874,6 +951,55 @@ impl Response {
             _ => false,
         }
     }
+
+    // .public.response.Info info = 7;
+
+    pub fn clear_info(&mut self) {
+        self.kind = ::std::option::Option::None;
+    }
+
+    pub fn has_info(&self) -> bool {
+        match self.kind {
+            ::std::option::Option::Some(Response_oneof_kind::info(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_info(&mut self, v: super::response::Info) {
+        self.kind = ::std::option::Option::Some(Response_oneof_kind::info(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_info(&mut self) -> &mut super::response::Info {
+        if let ::std::option::Option::Some(Response_oneof_kind::info(_)) = self.kind {
+        } else {
+            self.kind = ::std::option::Option::Some(Response_oneof_kind::info(super::response::Info::new()));
+        }
+        match self.kind {
+            ::std::option::Option::Some(Response_oneof_kind::info(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_info(&mut self) -> super::response::Info {
+        if self.has_info() {
+            match self.kind.take() {
+                ::std::option::Option::Some(Response_oneof_kind::info(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            super::response::Info::new()
+        }
+    }
+
+    pub fn get_info(&self) -> &super::response::Info {
+        match self.kind {
+            ::std::option::Option::Some(Response_oneof_kind::info(ref v)) => v,
+            _ => super::response::Info::default_instance(),
+        }
+    }
 }
 
 impl ::protobuf::Message for Response {
@@ -889,6 +1015,11 @@ impl ::protobuf::Message for Response {
             }
         }
         if let Some(Response_oneof_kind::scan(ref v)) = self.kind {
+            if !v.is_initialized() {
+                return false;
+            }
+        }
+        if let Some(Response_oneof_kind::info(ref v)) = self.kind {
             if !v.is_initialized() {
                 return false;
             }
@@ -930,6 +1061,12 @@ impl ::protobuf::Message for Response {
                     }
                     self.kind = ::std::option::Option::Some(Response_oneof_kind::success(is.read_bool()?));
                 },
+                7 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    self.kind = ::std::option::Option::Some(Response_oneof_kind::info(is.read_message()?));
+                },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
                 },
@@ -962,6 +1099,10 @@ impl ::protobuf::Message for Response {
                 &Response_oneof_kind::success(v) => {
                     my_size += 2;
                 },
+                &Response_oneof_kind::info(ref v) => {
+                    let len = v.compute_size();
+                    my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
+                },
             };
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
@@ -992,6 +1133,11 @@ impl ::protobuf::Message for Response {
                 },
                 &Response_oneof_kind::success(v) => {
                     os.write_bool(6, v)?;
+                },
+                &Response_oneof_kind::info(ref v) => {
+                    os.write_tag(7, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+                    os.write_raw_varint32(v.get_cached_size())?;
+                    v.write_to_with_cached_sizes(os)?;
                 },
             };
         }
@@ -1062,6 +1208,11 @@ impl ::protobuf::Message for Response {
                     Response::has_success,
                     Response::get_success,
                 ));
+                fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, super::response::Info>(
+                    "info",
+                    Response::has_info,
+                    Response::get_info,
+                ));
                 ::protobuf::reflect::MessageDescriptor::new::<Response>(
                     "Response",
                     fields,
@@ -1089,6 +1240,7 @@ impl ::protobuf::Clear for Response {
         self.clear_scan();
         self.clear_pong();
         self.clear_success();
+        self.clear_info();
         self.unknown_fields.clear();
     }
 }
@@ -1107,20 +1259,22 @@ impl ::protobuf::reflect::ProtobufValue for Response {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x0cpublic.proto\x12\x06public\x1a\rrequest.proto\x1a\x0eresponse.prot\
-    o\"\xcc\x02\n\x07Request\x12'\n\x03get\x18\x01\x20\x01(\x0b2\x13.public.\
+    o\"\xf8\x02\n\x07Request\x12'\n\x03get\x18\x01\x20\x01(\x0b2\x13.public.\
     request.GetH\0R\x03get\x12'\n\x03set\x18\x02\x20\x01(\x0b2\x13.public.re\
     quest.SetH\0R\x03set\x120\n\x06delete\x18\x03\x20\x01(\x0b2\x16.public.r\
     equest.DeleteH\0R\x06delete\x12*\n\x04scan\x18\x04\x20\x01(\x0b2\x14.pub\
     lic.request.ScanH\0R\x04scan\x12\x14\n\x04ping\x18\x05\x20\x01(\x08H\0R\
     \x04ping\x124\n\x08add_node\x18\x06\x20\x01(\x0b2\x17.public.request.Add\
     NodeH\0R\x07addNode\x12=\n\x0bremove_node\x18\x07\x20\x01(\x0b2\x1a.publ\
-    ic.request.RemoveNodeH\0R\nremoveNodeB\x06\n\x04kind\"\xce\x01\n\x08Resp\
-    onse\x12(\n\x03get\x18\x01\x20\x01(\x0b2\x14.public.response.GetH\0R\x03\
-    get\x121\n\x06delete\x18\x03\x20\x01(\x0b2\x17.public.response.DeleteH\0\
-    R\x06delete\x12+\n\x04scan\x18\x04\x20\x01(\x0b2\x15.public.response.Sca\
-    nH\0R\x04scan\x12\x14\n\x04pong\x18\x05\x20\x01(\x08H\0R\x04pong\x12\x1a\
-    \n\x07success\x18\x06\x20\x01(\x08H\0R\x07successB\x06\n\x04kindb\x06pro\
-    to3\
+    ic.request.RemoveNodeH\0R\nremoveNode\x12*\n\x04info\x18\x08\x20\x01(\
+    \x0b2\x14.public.request.InfoH\0R\x04infoB\x06\n\x04kind\"\xfb\x01\n\x08\
+    Response\x12(\n\x03get\x18\x01\x20\x01(\x0b2\x14.public.response.GetH\0R\
+    \x03get\x121\n\x06delete\x18\x03\x20\x01(\x0b2\x17.public.response.Delet\
+    eH\0R\x06delete\x12+\n\x04scan\x18\x04\x20\x01(\x0b2\x15.public.response\
+    .ScanH\0R\x04scan\x12\x14\n\x04pong\x18\x05\x20\x01(\x08H\0R\x04pong\x12\
+    \x1a\n\x07success\x18\x06\x20\x01(\x08H\0R\x07success\x12+\n\x04info\x18\
+    \x07\x20\x01(\x0b2\x15.public.response.InfoH\0R\x04infoB\x06\n\x04kindb\
+    \x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

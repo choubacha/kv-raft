@@ -34,6 +34,7 @@ fn main() {
             SubCommand::with_name("remove_node").arg(Arg::with_name("ID").takes_value(true)),
         )
         .subcommand(SubCommand::with_name("scan"))
+        .subcommand(SubCommand::with_name("info"))
         .subcommand(SubCommand::with_name("ping"))
         .subcommand(SubCommand::with_name("bench"))
         .get_matches();
@@ -152,6 +153,23 @@ fn main() {
                             }),
                     );
                 }
+                ("info", Some(_)) => {
+                    ::tokio::spawn(
+                        client
+                            .info()
+                            .map_err(|e| println!("err while setting: {:?}", e))
+                            .and_then(move |(_, resp)| {
+                                let resp = resp.unwrap();
+                                let info = resp.get_info();
+                                println!("id:        {}", info.get_id());
+                                println!("leader_id: {}", info.get_leader_id());
+                                println!("term:      {}", info.get_term());
+                                println!("applied:   {}", info.get_applied());
+                                println!("peers:     {:?}", info.get_peers());
+                                Ok(())
+                            }),
+                    );
+                }
                 ("ping", Some(_)) => {
                     ::tokio::spawn(
                         client
@@ -186,34 +204,33 @@ fn main() {
                                         Ok(Loop::Continue((client, count + 1)))
                                     }
                                 })
-                        })
-                        .map(move |client| {
+                        }).map(move |client| {
                             println!("elapsed: {:?}", start.elapsed());
                             client
                         })
-                        .and_then(move |client| {
-                            let start = Instant::now();
-                            loop_fn((client, 0), move |(client, count)| {
-                                client
-                                    .get(&format!("key-{}", count))
-                                    .map_err(|e| println!("err while setting: {:?}", e))
-                                    .and_then(move |(client, _)| {
-                                        if count % 100 == 0 {
-                                            println!("{} gotten", count);
-                                        }
+                            .and_then(move |client| {
+                                let start = Instant::now();
+                                loop_fn((client, 0), move |(client, count)| {
+                                    client
+                                        .get(&format!("key-{}", count))
+                                        .map_err(|e| println!("err while setting: {:?}", e))
+                                        .and_then(move |(client, _)| {
+                                            if count % 1000 == 0 {
+                                                println!("{} gotten", count);
+                                            }
 
-                                        if count > 100000 {
-                                            Ok(Loop::Break((client, start.elapsed())))
-                                        } else {
-                                            Ok(Loop::Continue((client, count + 1)))
-                                        }
-                                    })
+                                            if count > 100000 {
+                                                Ok(Loop::Break((client, start.elapsed())))
+                                            } else {
+                                                Ok(Loop::Continue((client, count + 1)))
+                                            }
+                                        })
+                                })
                             })
-                        })
-                        .and_then(move |(_, duration)| {
-                            println!("get elapsed: {:?}", duration);
-                            Ok(())
-                        })
+                            .and_then(move |(_, duration)| {
+                                println!("get elapsed: {:?}", duration);
+                                Ok(())
+                            }),
                     );
                 }
                 _ => panic!("No option chosen"),

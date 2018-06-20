@@ -13,6 +13,7 @@ message Request {
     bool ping = 5;
     request.AddNode add_node = 6;
     request.RemoveNode remove_node = 7;
+    request.Info info = 8;
   }
 }
 
@@ -23,5 +24,6 @@ message Response {
     response.Scan scan = 4;
     bool pong = 5;
     bool success = 6;
+    response.Info info = 7;
   }
 }

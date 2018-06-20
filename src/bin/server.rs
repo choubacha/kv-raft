@@ -26,9 +26,8 @@ fn main() {
     let peer_on = matches
         .value_of("peer-on")
         .unwrap_or("0.0.0.0:9001")
-        .parse()
-        .expect("Could not connect to peer network");
+        .to_string();
 
     let file = matches.value_of("data-file").unwrap_or("/tmp/data");
-    Server::start(id, &file, &peer_on).join();
+    Server::start(id, &file, peer_on).join();
 }

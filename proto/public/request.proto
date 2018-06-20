@@ -26,3 +26,6 @@ message AddNode {
 message RemoveNode {
   uint64 id = 1;
 }
+
+message Info {
+}

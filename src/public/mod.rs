@@ -59,6 +59,12 @@ pub fn scan_request() -> Request {
     request
 }
 
+pub fn info_request() -> Request {
+    let mut request = Request::new();
+    request.set_info(request::Info::new());
+    request
+}
+
 pub fn scan_response(v: Vec<String>) -> Response {
     let mut response = Response::new();
     let mut scan = response::Scan::new();
